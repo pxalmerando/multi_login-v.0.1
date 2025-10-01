@@ -1,6 +1,6 @@
 import hashlib
 import time
-from http_client import HttpClient
+from .http_client import HttpClient
 class UserAuth:
     def __init__(self, base_url: str, email: str, password: str, http_client: HttpClient, token_duration_minutes: int = 30):
         self.base_url = base_url

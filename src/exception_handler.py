@@ -1,5 +1,4 @@
 from typing import Dict, Any, Optional
-
 class ApiError(Exception):
     error_type = "api_error"
     default_message = "An API error occurred"
@@ -111,8 +110,7 @@ class ExceptionMapper:
 
     @classmethod
     def from_response(cls, status_code: int, message: str = None, response: Any = None) -> ApiError:
-
-
+        
         error_class = cls._error_map.get(status_code)
 
         if error_class:
