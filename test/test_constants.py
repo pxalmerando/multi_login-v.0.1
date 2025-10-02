@@ -1,7 +1,6 @@
 import pytest
 from src.constants import APIEndpoints
 
-
 class TestAPIEndpoints:
     """Test suite for APIEndpoints class"""
     
