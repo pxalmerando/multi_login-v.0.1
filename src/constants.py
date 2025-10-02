@@ -18,7 +18,10 @@ class APIEndpoints:
     
     @classmethod
     def LAUNCHER(cls):
-        return f"{cls.get_base_url()}launcher"
+        base = cls.get_base_url()
+        if not base.endswith('/'):
+            base += '/'
+        return f"{base}launcher"
     
     @classmethod
     def CLIENT(cls):

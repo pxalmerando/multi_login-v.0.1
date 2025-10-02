@@ -1,5 +1,5 @@
 import json, os
-from auth import UserAuth
+from .auth import UserAuth
 class TokenManager:
 
     def __init__(self, user_auth: UserAuth, token_path: str = 'token.json'):
