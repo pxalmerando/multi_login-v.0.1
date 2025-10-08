@@ -3,17 +3,12 @@ class BaseManagerApi(HttpClient):
     def __init__(self, base_url: str, api_token: str):
         self.api_token = api_token
         super().__init__(base_url)
-    def _get_headers(self, include_auth: bool = False, only_accept: bool = False) -> dict:
+    def _get_headers(self, include_auth: bool = False) -> dict:
 
         headers =  {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         }
-
-        if only_accept:
-            headers =  {
-                'Accept': 'application/json',
-            }
             
         if include_auth and self.api_token:
             headers['Authorization'] = f"Bearer {self.api_token}"
