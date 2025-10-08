@@ -6,7 +6,6 @@ class HttpClient:
 
         Attributes:
             base_url (str): Base URL to make requests to
-            timeout (int): Timeout in seconds to wait for a response from the server
 
         Methods:
             get(endpoint, **kwargs): Make a GET request to the given endpoint
@@ -16,9 +15,8 @@ class HttpClient:
             patch(endpoint, **kwargs): Make a PATCH request to the given endpoint
     """
 
-    def __init__(self, base_url: str, timeout: int = 10):
+    def __init__(self, base_url: str):
         self.base_url = base_url
-        self.timeout = timeout
 
 
     def _full_url(self, endpoint: str) -> str:
@@ -39,13 +37,14 @@ class HttpClient:
 
         url = self._full_url(endpoint)
 
-        if 'timeout' not in kwargs:
-            kwargs['timeout'] = self.timeout
+        try:
+            response = requests.request(method, url, **kwargs)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            error_json = response.json()
+            print(f"Request failed with status code {response.status_code}: {error_json}")
 
-        response = requests.request(method, url, **kwargs)
-        response.raise_for_status()
-        return response.json()
-    
     def get(self, endpoint: str, **kwargs) -> Dict[str, Any]:
         return self._make_request('GET', endpoint, **kwargs)
     
