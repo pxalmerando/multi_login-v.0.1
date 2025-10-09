@@ -1,6 +1,6 @@
 from dataclasses import dataclass, asdict
 from typing import Optional, Dict, Any
-from base_manager import BaseManagerApi
+from .base_manager import BaseManagerApi
 
 @dataclass
 class ScreenConfig:
@@ -45,7 +45,9 @@ class ProfileManager(BaseManagerApi):
     
     def _should_use_custom_screen(self, config: ProfileConfig) -> bool:
         """Check if custom screen configuration should be used"""
-        return config.screen is not None
+        return (config.screen is not None and 
+                config.screen.width > 0 and 
+                config.screen.height > 0)
     
     def _should_use_custom_proxy(self, config: ProfileConfig) -> bool:
         """Check if custom proxy configuration should be used"""
