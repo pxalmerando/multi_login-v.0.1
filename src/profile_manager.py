@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from base_manager import BaseManagerApi
 
 @dataclass
@@ -305,7 +305,19 @@ class ProfileManager(BaseManagerApi):
             'order_by': order_by,
             'sort': sort,
         }
-        return self.request('POST', 'profile/search', include_auth=True, json=json)
+
+        response = self.request('POST', 'profile/search', include_auth=True, json=json)
+        return response
+    def get_profile_names(self, folder_id: str) -> List[str]:
+        if not folder_id:
+            return []
+        try:
+            list_response = self.list_profiles(folder_id=folder_id)
+            data = list_response.get('data', {}).get('profiles', [])
+            return [name.get('name') for name in data]
+        except Exception as e:
+            print(f"Failed to get profile names for folder {folder_id} {e}")
+            return []
     
     def update_profile(self, profile_id: str, config: ProfileConfig) -> Dict[str, Any]:
         """
@@ -339,15 +351,17 @@ class ProfileManager(BaseManagerApi):
             Raises:
                 ValueError: If profile_id is empty or None.
         """
-
-        if not profile_id:
-            raise ValueError("Profile ID is required")
-        json = {
-            'ids': [
-                profile_id
-            ],
-            'permanently': is_permanent
-        }
-        response = self.request('POST', 'profile/remove', include_auth=True, json=json)
-        return response
+        
+        try:
+            json = {
+                'ids': [
+                    profile_id
+                ],
+                'permanently': is_permanent
+            }
+            response = self.request('POST', 'profile/remove', include_auth=True, json=json)
+            return response
+        except ValueError as e:
+            print(f"Failed to delete profile {profile_id} {e}")
+            return {}
 
