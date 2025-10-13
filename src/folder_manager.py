@@ -1,4 +1,4 @@
-from .base_manager import BaseManagerApi
+from base_manager import BaseManagerApi
 class FolderManager(BaseManagerApi):
     """
         A class used to interact with the API endpoints related to folders.
@@ -44,6 +44,23 @@ class FolderManager(BaseManagerApi):
         """
         return self.request('GET', 'workspace/folders', include_auth=True)
     
+    def get_folder_name(self) -> list:
+        try:
+            list_response = self.list_folders()
+            folders = [folder.get('name') for folder in list_response.get('data', {}).get('folders', [])]
+            return folders
+        except ValueError as e:
+            print(f"Error retrieving folder names: {e}")
+            return []
+    
+    def get_folder_id(self) -> list:
+        try:
+            list_response = self.list_folders()
+            folders = [folder.get('folder_id') for folder in list_response.get('data', {}).get('folders', [])]
+            return folders
+        except ValueError as e:
+            print(f"Error retrieving folder IDs: {e}")
+            return []
     def update_folder(self, folder_id: str, new_folder_name: str, comment: str = None):
         """
             Update the name and comment of a folder.
