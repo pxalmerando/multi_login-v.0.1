@@ -1,4 +1,4 @@
-from http_client import HttpClient
+from .http_client import HttpClient
 class BaseManagerApi(HttpClient):
     def __init__(self, base_url: str, api_token: str):
         self.api_token = api_token
