@@ -1,4 +1,4 @@
-from base_manager import BaseManagerApi
+from .base_manager import BaseManagerApi
 class FolderManager(BaseManagerApi):
     """
         A class used to interact with the API endpoints related to folders.
