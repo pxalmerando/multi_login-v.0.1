@@ -98,24 +98,30 @@ class ProfileManager(BaseManagerApi):
         if include_full_parameters:
             proxy_masking = "disabled" if not proxy else "custom"
             payload['parameters'] = {
-                'flags': {
-                    'proxy_masking': proxy_masking,
-                    'audio_masking': 'natural',
-                    'fonts_masking': 'natural',
-                    'geolocation_masking': 'mask',
-                    'geolocation_popup': 'prompt',
-                    'graphics_masking': 'natural',
-                    'graphics_noise': 'natural',
-                    'localization_masking': 'natural',
-                    'media_devices_masking': 'natural',
-                    'navigator_masking': 'natural',
-                    'ports_masking': 'natural',
-                    'screen_masking': 'natural',
-                    'timezone_masking': 'natural',
-                    'webrtc_masking': 'natural',
-                },
                 'fingerprint': {},
-                'storage': {'is_local': True},
+                "flags": {
+                        "audio_masking": "natural",
+                        "canvas_noise": "mask",
+                        "fonts_masking": "mask",
+                        "geolocation_masking": "mask",
+                        "geolocation_popup": "allow",
+                        "graphics_masking": "mask",
+                        "graphics_noise": "mask",
+                        "localization_masking": "mask",
+                        "media_devices_masking": "natural",
+                        "navigator_masking": "mask",
+                        "ports_masking": "mask",
+                        "proxy_masking": proxy_masking,
+                        "quic_mode": "disabled",
+                        "screen_masking": "mask",
+                        "startup_behavior": "recover",
+                        "timezone_masking": "mask",
+                        "webrtc_masking": "mask"
+                    },
+                "storage": {
+                        "is_local": True,
+                        "save_service_worker": True
+                    }
             }
         elif proxy:
             payload['parameters'] = {
