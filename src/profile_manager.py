@@ -1,301 +1,209 @@
-from dataclasses import dataclass, asdict
-from typing import Optional, Dict, Any, List
-from base_manager import BaseManagerApi
+from typing import Dict, Any, List, Optional
+from .base_manager import BaseManagerApi
+import requests
 
-@dataclass
-class ScreenConfig:
-    width: int = 1920
-    height: int = 1080
-    pixel_ratio: float = 1.0
-
-@dataclass
-class ProxyConfig:
-    type: Optional[str] = None
-    host: Optional[str] = None
-    port: Optional[int] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
-    save_traffic: bool = False
-    def is_configured(self) -> bool:
-        return bool(self.type and self.host)
-
-@dataclass
-class StorageConfig:
-    is_local: bool = True
-    save_service_worker: bool = True  
-@dataclass
-class ProfileConfig:
-    name: str
-    folder_id: str
-    profile_id: Optional[str] = None
-
-    browser_type: str = "mimic"
-    os_type: str = "windows"
-    auto_update_core: bool = True
-    times: int = 1
-    notes: str = ''
-
-    screen: Optional[ScreenConfig] = None
-    proxy: Optional[ProxyConfig] = None
 
 class ProfileManager(BaseManagerApi):
-    def __init__(self, base_url: str, api_token: str):
-        super().__init__(base_url, api_token)
-    
-    def _should_use_custom_screen(self, config: ProfileConfig) -> bool:
-        """Check if custom screen configuration should be used"""
-        return config.screen is not None
-    
-    def _should_use_custom_proxy(self, config: ProfileConfig) -> bool:
-        """Check if custom proxy configuration should be used"""
-        return config.proxy is not None and config.proxy.is_configured()
-    
-    def _build_flags(self, config: ProfileConfig) -> Dict[str, str]:
-        
-        """
-            Builds the flags for the profile based on the given configuration.
+    """Manager for creating, listing, updating and deleting profiles.
 
-            Args:
-                config (ProfileConfig): The configuration of the profile.
+    This class wraps profile-related API calls and provides helper methods to
+    build request payloads and extract useful data from responses.
 
-            Returns:
-                Dict[str, str]: A dictionary containing the flags for the profile.
+    Args:
+        api_url: Base URL for the API endpoints (e.g. "https://api.example.com/").
+        api_token: API token used for authenticated requests.
+    """
+
+    BROWSER_TYPE = 'mimic'
+    OS_TYPE = 'windows'
+    DEFAULT_LIMIT = 100
+    DEFAULT_OFFSET = 0
+    DEFAULT_SEARCH_TEXT = ''
+    DEFAULT_SORT = 'asc'
+    DEFAULT_ORDER_BY = 'created_at'
+    DEFAULT_STORAGE_TYPE = 'all'
+
+
+    def __init__(self, api_url: str, api_token: str) -> None:
+        """Initialize the ProfileManager.
+
+        Simply forwards parameters to the BaseManagerApi constructor.
+
+        Args:
+            api_url: Base URL for the API endpoints.
+            api_token: API token used for authenticated requests.
         """
-        flags = {
-            "audio_masking": "natural",
-            "fonts_masking": "natural", 
-            "geolocation_masking": "mask",
-            "geolocation_popup": "prompt",
-            "graphics_masking": "natural",
-            "graphics_noise": "natural",
-            "localization_masking": "natural",
-            "media_devices_masking": "natural",
-            "navigator_masking": "natural",
-            "ports_masking": "natural",
-            "proxy_masking": "disabled",
-            "screen_masking": "natural",
-            "timezone_masking": "natural",
-            "webrtc_masking": "natural",
-            "quic_mode": "natural",
-            "canvas_noise": "natural",
+        super().__init__(api_url, api_token)
+    def _get_profile_field(self, folder_id: str, field_name: str):
+        """Helper to get a specific field from a profile by id.
+
+        Args:
+            profile_id: ID of the profile to query.
+            field: The field name to extract from the profile data.
+
+        Returns:
+            The value of the requested field, or None if not found.
+        """
+
+        if not folder_id:
+            raise ValueError("folder_id must be provided")
+        if not field_name:
+            raise ValueError("field_name must be provided")
+        try:
+            response = self.list_profiles(folder_id=folder_id)
+            profiles = response.get('data', {}).get('profiles', [])
+            return [profile.get(field_name, '') for profile in profiles]
+        except Exception as e:
+            print(f"Failed to get field '{field_name}' for profile {folder_id}: {e}")
+            return []
+    def _build_profile_payload(
+        self,
+        name: str,
+        folder_id: str,
+        browser_type: str,
+        os_type: str,
+        proxy: Optional[Dict[str, Any]],
+        profile_id: Optional[str] = None,
+        include_full_parameters: bool = False
+    ) -> Dict[str, Any]:
+        """Build the JSON payload used when creating or updating a profile.
+
+        This helper centralizes payload construction so create/update behave
+        consistently. It will include default parameter flags when
+        ``include_full_parameters`` is True, attach proxy settings when
+        provided, and optionally include an existing ``profile_id`` for
+        updates.
+
+        Args:
+            name: Human-readable profile name.
+            folder_id: ID of the folder to which the profile belongs.
+            browser_type: Browser engine type (e.g. "mimic").
+            os_type: Operating system type (e.g. "windows").
+            proxy: Optional proxy configuration dictionary to attach to the
+                profile parameters.
+            profile_id: Optional existing profile id for update operations.
+            include_full_parameters: Whether to populate the full default
+                parameters block (flags, fingerprint, storage).
+
+        Returns:
+            A dictionary ready to be sent as JSON in an API request.
+        """
+        payload = {
+            'name': name,
+            'folder_id': folder_id,
+            'browser_type': browser_type,
+            'os_type': os_type,
         }
+        if profile_id:
+            payload['profile_id'] = profile_id
+        if include_full_parameters:
+            proxy_masking = "disabled" if not proxy else "custom"
+            payload['parameters'] = {
+                'fingerprint': {},
+                "flags": {
+                        "audio_masking": "natural",
+                        "canvas_noise": "mask",
+                        "fonts_masking": "mask",
+                        "geolocation_masking": "mask",
+                        "geolocation_popup": "allow",
+                        "graphics_masking": "mask",
+                        "graphics_noise": "mask",
+                        "localization_masking": "mask",
+                        "media_devices_masking": "natural",
+                        "navigator_masking": "mask",
+                        "ports_masking": "mask",
+                        "proxy_masking": proxy_masking,
+                        "quic_mode": "disabled",
+                        "screen_masking": "mask",
+                        "startup_behavior": "recover",
+                        "timezone_masking": "mask",
+                        "webrtc_masking": "mask"
+                    },
+                "storage": {
+                        "is_local": True,
+                        "save_service_worker": True
+                    }
+            }
+        elif proxy:
+            payload['parameters'] = {
+                'flags': {'proxy_masking': 'custom'}
+            }
+        if proxy:
+            if 'parameters' not in payload:
+                payload['parameters'] = {}
+            payload['parameters']['proxy'] = proxy
+        return payload
+    def create_profile(
+        self, 
+        folder_id: str,
+        name: str, 
+        browser_type: str = BROWSER_TYPE, 
+        os_type: str = OS_TYPE, 
+        proxy: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Create a new profile.
 
-        if self._should_use_custom_screen(config):
-            flags['screen_masking'] = 'custom'
+        Constructs the profile payload using sensible defaults and sends a
+        POST request to the profile creation endpoint.
 
-        if self._should_use_custom_proxy(config):
-            flags['proxy_masking'] = 'custom'
-        
-        return flags
-    
-    def _build_fingerprint(self, config: ProfileConfig) -> Dict[str, Any]:
+        Args:
+            folder_id: ID of the folder to create the profile in.
+            name: Name for the new profile.
+            browser_type: Browser engine type. Defaults to "mimic".
+            os_type: Operating system type. Defaults to "windows".
+            proxy: Optional proxy configuration to attach to the profile.
+                Example of proxy configuration:
+                "proxy": {
+                    "type": "http",
+                    "host": "hellos.com",
+                    "username": "angelou",
+                    "password": "pass",
+                    "save_traffic": "true"
+                }
+
+        Returns:
+            The parsed JSON response from the API as a dictionary.
         """
-            Builds the fingerprint for the profile based on the given configuration.
+        payload = self._build_profile_payload(
+            name=name,
+            folder_id=folder_id,
+            browser_type=browser_type,
+            os_type=os_type,
+            proxy=proxy,
+            include_full_parameters=True,
+        )
+        return self.request('POST', 'profile/create', include_auth=True, json=payload)
+    def list_profiles(
+        self, 
+        folder_id: str, 
+        is_removed: bool = False, 
+        limit: int = DEFAULT_LIMIT, 
+        offset: int = DEFAULT_OFFSET, 
+        search_text: str = DEFAULT_SEARCH_TEXT, 
+        storage_type: str = DEFAULT_STORAGE_TYPE, 
+        order_by: str = DEFAULT_ORDER_BY, 
+        sort: str = DEFAULT_SORT
+    ) -> Dict[str, Any]:
+        """Return a list of profiles for a given folder.
 
-            Args:
-                config (ProfileConfig): The configuration of the profile.
+        This method wraps the profile search endpoint. The returned structure
+        is the API response dict and may contain pagination metadata under the
+        'data' key depending on the server implementation.
 
-            Returns:
-                Dict[str, Any]: A dictionary containing the fingerprint for the profile.
+        Args:
+            folder_id: Folder id to list profiles from.
+            is_removed: Whether to include removed profiles. Defaults to False.
+            limit: Maximum number of profiles to return. Defaults to 100.
+            offset: Pagination offset. Defaults to 0.
+            search_text: Optional text to filter profile names.
+            storage_type: Storage filter (e.g. 'all').
+            order_by: Field to order by. Defaults to 'created_at'.
+            sort: Sort direction ('asc' or 'desc'). Defaults to 'asc'.
+
+        Returns:
+            API response as a dictionary.
         """
-        
-        fingerprint = {}
-        if self._should_use_custom_screen(config):
-            fingerprint['screen'] = asdict(config.screen)
-        return fingerprint
-    
-    def _build_storage(self) -> Dict[str, Any]:
-        """
-            Builds the storage configuration for the profile based on the default configuration.
-
-            Returns:
-                Dict[str, Any]: A dictionary containing the storage configuration for the profile.
-        """
-        return asdict(StorageConfig())
-
-    def _build_proxy(self, config: ProfileConfig) -> Dict[str, Any]:
-        """
-            Builds the proxy configuration for the profile based on the given configuration.
-
-            If the given configuration has a custom proxy configuration, it is used. Otherwise, None is returned.
-
-            Args:
-                config (ProfileConfig): The configuration of the profile.
-
-            Returns:
-                Dict[str, Any]: A dictionary containing the proxy configuration for the profile, or None if no custom proxy configuration is used.
-        """
-        if self._should_use_custom_proxy(config):
-            return asdict(config.proxy)
-        return None
-
-    def _build_parameters(self, config: ProfileConfig) -> Dict[str, Any]:
-        """
-            Builds the parameters for the profile based on the given configuration.
-
-            Args:
-                config (ProfileConfig): The configuration of the profile.
-
-            Returns:
-                Dict[str, Any]: A dictionary containing the parameters for the profile.
-        """
-        parameters = {
-            'flags': self._build_flags(config),
-            'storage': self._build_storage(),
-            'fingerprint': self._build_fingerprint(config),
-        }
-
-        proxy_data = self._build_proxy(config)
-        if proxy_data:
-            parameters['proxy'] = proxy_data
-
-        return parameters
-    
-    def _validate_create_config(self, config: ProfileConfig) -> None:
-        """
-            Validates the configuration of a profile when creating a new profile.
-
-            Args:
-                config (ProfileConfig): The configuration of the profile to create.
-
-            Raises:
-                ValueError: If name or folder_id is not set, or if profile_id is set.
-        """
-
-        if not config.name or not config.folder_id:
-            raise ValueError("Name and folder_id are required to create a profile.")
-        
-        if config.profile_id:
-            raise ValueError("Profile ID should not be set when creating a new profile.")
-        
-    def _validate_update_config(self, profile_id: str) -> None:
-        """
-            Validates the configuration of a profile when updating an existing profile.
-
-            Args:
-                profile_id (str): The ID of the profile to update.
-
-            Raises:
-                ValueError: If profile_id is not set.
-        """
-
-        if not profile_id:
-            raise ValueError("Profile ID is required for updates")
-        
-    def _build_common_data(self, config: ProfileConfig) -> Dict[str, Any]:
-        """
-            Builds the common data required for creating or updating a profile.
-
-            Args:
-                config (ProfileConfig): The configuration of the profile to create or update
-
-            Returns:
-                Dict[str, Any]: A dictionary containing the common data required for creating or updating a profile
-        """
-        return {
-            'name': config.name,
-        }
-
-    def _build_create_data(self, config: ProfileConfig) -> Dict[str, Any]:
-        """
-            Builds the data required for creating a new profile.
-
-            Args:
-                config (ProfileConfig): The configuration of the profile to create
-
-            Returns:
-                Dict[str, Any]: A dictionary containing the data required for creating a new profile.
-        """
-        return {
-            'browser_type': config.browser_type,
-            'folder_id': config.folder_id,
-            'os_type': config.os_type,
-            'auto_update_core': config.auto_update_core,
-            'times': config.times,
-            'notes': config.notes
-        }
-    
-    def _build_update_data(self, config: ProfileConfig) -> Dict[str, Any]:
-        """
-            Builds the data required for updating a profile.
-
-            Args:
-                config (ProfileConfig): The configuration of the profile.
-
-            Returns:
-                Dict[str, Any]: The data required for updating a profile.
-        """
-        return {
-            'profile_id': config.profile_id
-        }
-
-    def _build_profile_data(self, config: ProfileConfig, is_update: bool = False) -> Dict[str, Any]:
-        """
-            Build the data required for creating or updating a profile.
-
-            Args:
-                config (ProfileConfig): The configuration of the profile.
-                is_update (bool): Whether the profile is being updated or created. Defaults to False.
-
-            Returns:
-                Dict[str, Any]: The data required for creating or updating a profile.
-        """
-        data = self._build_common_data(config)
-        
-        if is_update:
-            if not config.profile_id:
-                raise ValueError("Profile ID is required for updates")
-            data.update(self._build_update_data(config))
-
-        else:
-            if config.profile_id:
-                raise ValueError("Profile ID should not be set when creating a new profile")
-            data.update(self._build_create_data(config))
-
-        data['parameters'] = self._build_parameters(config)
-        return data
-    
-    def create_profile(self, config: ProfileConfig) -> Dict[str, Any]:        
-        """
-            Create a new profile
-
-            Args:
-                config (ProfileConfig): The configuration of the profile to create
-
-            Returns:
-                dict: The response from the server
-        """
-        
-        self._validate_create_config(config)
-        json = self._build_profile_data(config)
-        return self.request('POST', 'profile/create', include_auth=True, json=json)
-    
-    def list_profiles(self, folder_id: str, 
-                      is_removed: bool = False, 
-                      limit: int = 10, offset: int = 0, 
-                      search_text: str = '', 
-                      storage_type: str = 'all', 
-                      order_by: str = 'created_at', 
-                      sort: str = 'asc'
-                    ) -> Dict[str, Any]:
-        """
-            List profiles
-
-            Args:
-                folder_id (str): The ID of the folder to list profiles from
-                is_removed (bool): Whether to include removed profiles in the result (default: False)
-                limit (int): The maximum number of profiles to return (default: 10)
-                offset (int): The offset from which to start listing profiles (default: 0)
-                search_text (str): The text to search for in the profile names (default: empty string)
-                storage_type (str): The type of storage to filter by (default: 'all')
-                order_by (str): The field to order the profiles by (default: 'created_at')
-                sort (str): The direction in which to sort the profiles (options: 'asc', 'desc')
-
-            Returns:
-                Dict[str, Any]: The response from the server
-        """
-        
-        json = {
+        payload = {
             'is_removed': is_removed,
             'limit': limit,
             'offset': offset,
@@ -305,63 +213,97 @@ class ProfileManager(BaseManagerApi):
             'order_by': order_by,
             'sort': sort,
         }
-
-        response = self.request('POST', 'profile/search', include_auth=True, json=json)
-        return response
-    def get_profile_names(self, folder_id: str) -> List[str]:
-        if not folder_id:
-            return []
-        try:
-            list_response = self.list_profiles(folder_id=folder_id)
-            data = list_response.get('data', {}).get('profiles', [])
-            return [name.get('name') for name in data]
-        except Exception as e:
-            print(f"Failed to get profile names for folder {folder_id} {e}")
-            return []
+        return self.request('POST', 'profile/search', include_auth=True, json=payload)
     
-    def update_profile(self, profile_id: str, config: ProfileConfig) -> Dict[str, Any]:
+    def get_profile_names(self, folder_id: str) -> List[str]:
+        """Return a list of profile names for the given folder.
+
+        Args:
+            folder_id: ID of the folder to query.
+
+        Returns:
+            A list of profile name strings. If an error occurs an empty list is
+            returned. Raises ValueError if folder_id is falsy.
         """
-            Update a profile
+        return self._get_profile_field(folder_id, 'name')
+    def get_profile_ids(self, folder_id: str) -> List[str]:
+        """Return a list of profile IDs for the given folder.
 
-            Args:
-                profile_id (str): The ID of the profile to update
-                config (ProfileConfig): The configuration of the profile to update
+        Args:
+            folder_id: ID of the folder to query.
 
-            Returns:
-                Dict[str, Any]: The response from the server
+        Returns:
+            A list of profile id strings. If an error occurs an empty list is
+            returned. Raises ValueError if folder_id is falsy.
         """
+        return self._get_profile_field(folder_id, 'id')
+    def update_profile(
+        self,
+        profile_id: str,
+        folder_id: str,
+        name: str,
+        browser_type: str = BROWSER_TYPE,
+        os_type: str = OS_TYPE,
+        proxy: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Update an existing profile.
 
-        self._validate_update_config(profile_id)
-        config.profile_id = profile_id
-        json = self._build_profile_data(config, is_update=True)
-        return self.request('POST', 'profile/update', include_auth=True, json=json)
+        Builds an update payload that includes full parameters and the
+        provided proxy configuration (if any), then sends it to the profile
+        update endpoint.
 
-    def delete_profile(self, profile_id: str, is_permanent: bool = True) -> Dict[str, Any]:
+        Args:
+            profile_id: ID of the profile to update.
+            folder_id: ID of the folder containing the profile.
+            name: New name for the profile.
+            browser_type: Browser engine type. Defaults to "mimic".
+            os_type: Operating system type. Defaults to "windows".
+            proxy: Optional proxy configuration to attach to the profile.
+
+        Returns:
+            The parsed JSON response from the API as a dictionary.
         """
-            Delete a profile
+        payload = self._build_profile_payload(
+            name=name,
+            folder_id=folder_id,
+            browser_type=browser_type,
+            os_type=os_type,
+            proxy=proxy,
+            profile_id=profile_id,
+            include_full_parameters=True,
+        )
+        return self.request("POST", "profile/update", include_auth=True, json=payload)
+    def delete_profile(
+        self, 
+        profile_id: str, 
+        is_permanent: bool = True
+    ) -> Dict[str, Any]:
+        """Delete (or soft-delete) a profile by id.
 
-            Args:
-                profile_id (str): The ID of the profile to delete
-                is_permanent (bool): Whether to delete the profile permanently.
-                    Defaults to True.
+        Args:
+            profile_id: ID of the profile to remove.
+            is_permanent: If True the profile will be permanently deleted,
+                otherwise it will be marked as removed/soft-deleted.
 
-            Returns:
-                Dict[str, Any]: A dictionary containing the response from the API.
-
-            Raises:
-                ValueError: If profile_id is empty or None.
+        Returns:
+            The parsed JSON response from the API as a dictionary. On
+            unexpected failure an empty dict is returned.
         """
-        
         try:
-            json = {
-                'ids': [
-                    profile_id
-                ],
+            payload = {
+                'ids': [profile_id],
                 'permanently': is_permanent
             }
-            response = self.request('POST', 'profile/remove', include_auth=True, json=json)
-            return response
-        except ValueError as e:
-            print(f"Failed to delete profile {profile_id} {e}")
+            return self.request('POST', 'profile/remove', include_auth=True, json=payload)
+        except Exception as e:
+            print(f"Failed to delete profile {profile_id}: {e}")
             return {}
+        
+    # def run_profile(self, folder_id, profile_id):
+    #     return self.request('GET', f"api/v1/profile/f/{folder_id}/p/{profile_id}/start?automation_type=selenium", include_auth=True)
 
+    def run_profile(self, folder_id, profile_id):
+            response = self.request('GET', f"api/v1/profile/f/{folder_id}/p/{profile_id}/start?automation_type=selenium", include_auth=True)
+            print(f"Response: {response}")
+            return response
+        

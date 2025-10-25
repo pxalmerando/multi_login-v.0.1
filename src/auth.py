@@ -130,8 +130,10 @@ class UserAuth:
         """
         response = self.http_client.post('/user/signin', json={"email": self.email, "password": self._hash_password()}).get('data')
 
+        print(response)
+
         self.set_new_tokens(
-            access_token=response['access_token'],
+            access_token=response['token'],
             refresh_token=response['refresh_token']
         )
 
