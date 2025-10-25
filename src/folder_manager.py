@@ -53,7 +53,7 @@ class FolderManager(BaseManagerApi):
             print(f"Error retrieving folder names: {e}")
             return []
     
-    def get_folder_id(self) -> list:
+    def get_folder_ids(self) -> list:
         try:
             list_response = self.list_folders()
             folders = [folder.get('folder_id') for folder in list_response.get('data', {}).get('folders', [])]

@@ -6,10 +6,10 @@ class TokenManager:
 
         Args:
             user_auth (UserAuth): An instance of UserAuth used to login.
-            token_path (str): The path to the file where tokens are stored. Defaults to 'token.json'.
+            token_path (str): The path to the file where tokens are stored. Defaults to 'tokens.json'.
     """
 
-    def __init__(self, user_auth: UserAuth, token_path: str = 'token.json'):
+    def __init__(self, user_auth: UserAuth, token_path: str = 'tokens.json'):
         self.token_path = token_path
         self.user_auth = user_auth
 
@@ -59,5 +59,5 @@ class TokenManager:
             tokens = self.user_auth.to_dict()
             self.save(tokens)
             return tokens
-        except Exception:
-            raise Exception('Authentication failed.')
+        except Exception as e:
+            raise Exception('Authentication failed.', e)

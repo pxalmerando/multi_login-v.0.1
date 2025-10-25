@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Optional
 from .base_manager import BaseManagerApi
+import requests
 
 
 class ProfileManager(BaseManagerApi):
@@ -297,3 +298,12 @@ class ProfileManager(BaseManagerApi):
         except Exception as e:
             print(f"Failed to delete profile {profile_id}: {e}")
             return {}
+        
+    # def run_profile(self, folder_id, profile_id):
+    #     return self.request('GET', f"api/v1/profile/f/{folder_id}/p/{profile_id}/start?automation_type=selenium", include_auth=True)
+
+    def run_profile(self, folder_id, profile_id):
+            response = self.request('GET', f"api/v1/profile/f/{folder_id}/p/{profile_id}/start?automation_type=selenium", include_auth=True)
+            print(f"Response: {response}")
+            return response
+        
