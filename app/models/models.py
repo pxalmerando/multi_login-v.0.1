@@ -28,10 +28,3 @@ class UserCreate(BaseModel):
 
 class URLProcessRequest(BaseModel):
     url: str
-
-class URLProcessResponse(BaseModel):
-    success: Optional[bool] = True
-    submitted_url: str
-    result: dict
-    processed_at: str
-    processed_by: str
