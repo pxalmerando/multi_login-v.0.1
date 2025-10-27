@@ -12,6 +12,7 @@ class MultiLoginService:
 
     LAUNCHER_URL = "https://launcher.mlx.yt:45001"
     BASE_URL = "https://api.multilogin.com"
+    PROFILE_RUNNING = []
 
     def __init__(self) -> None:
 
@@ -67,43 +68,64 @@ class MultiLoginService:
                 self._profile_id_cache = new_profile['id']
 
         return self._profile_id_cache
+    def _get_running_profile_port(self, profile_id: str) -> int:
+        for profile in self.PROFILE_RUNNING:
+            if profile['profile_id'] == profile_id:
+                return profile['selenium_port']
 
+        return None
+    def cleanup(self):
+        for profile in self.PROFILE_RUNNING:
+            self.stop_profile(profile['profile_id'])
+        self.PROFILE_RUNNING.clear()
     def start_profile(self) -> str:
         try:
+            selenium_port = self._get_running_profile_port(self.profile_id)
+            
+            if selenium_port:
+                selenium_url = f"http://localhost:{selenium_port}"
+                return selenium_url
+
             endpoint = f"api/v1/profile/f/{self.folder_id}/p/{self.profile_id}/start?automation_type=selenium"
             response = self.http_launcher.get(endpoint, headers=self.headers)
             selenium_port = response.get('status', {}).get('message')
             selenium_url = f"http://localhost:{selenium_port}"
 
+            self.PROFILE_RUNNING.append({
+                "profile_id": self.profile_id,
+                "selenium_port": selenium_port
+            })
+
             return selenium_url
+
 
         except Exception as e:
             print(f"Failed to start profile {self.profile_id}: {e}")
-            return None
-    
+            return None    
     def stop_profile(self, profile_id: str):
         endpoint = f"api/v1/profile/stop/p/{profile_id}"
         return self.http_launcher.get(endpoint=endpoint, headers=self.headers)
 
 
     def process_url(self, url: str):
-        try:
+        try:               
             selenium_url = self.start_profile()
-            with BrowserManager(selenium_url=selenium_url) as driver:
-                driver.get(url)
-                return {
-                    "success": True,
-                    "message": "URL processed successfully",
-                    "Title": driver.title,
-                    "data": driver.page_source
-                }
+            if selenium_url:
+                with BrowserManager(selenium_url=selenium_url) as driver:
+                    driver.get(url)
+                    return {
+                        "success": True,
+                        "message": "URL processed successfully",
+                        "Title": driver.title,
+                        "data": driver.page_source
+                    }
+            print("Failed to start profile", selenium_url)
 
         except (WebDriverException, TimeoutException) as e:
+            self.PROFILE_RUNNING = [p for p in self.PROFILE_RUNNING if p.get("profile_id") != self.profile_id]
+            self.stop_profile(self.profile_id)
             return {
                 "success": False,
                 "message": f"Failed to process URL with profile {self.profile_id}: {e}",
                 "data": {}
             }
-        
-        finally:
-            self.stop_profile(self.profile_id)
