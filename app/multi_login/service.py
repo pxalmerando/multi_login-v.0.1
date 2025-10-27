@@ -79,6 +79,7 @@ class MultiLoginService:
             self.stop_profile(profile['profile_id'])
         self.PROFILE_RUNNING.clear()
     def start_profile(self) -> str:
+        print(self.PROFILE_RUNNING)
         try:
             selenium_port = self._get_running_profile_port(self.profile_id)
             

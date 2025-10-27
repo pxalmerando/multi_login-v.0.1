@@ -7,7 +7,10 @@ from app.users.service import user_service
 from app.auth.service import auth_service
 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/auth",
+    tags=["authentication"],
+)
 
 
 @router.post("/registration", response_model=AuthToken)

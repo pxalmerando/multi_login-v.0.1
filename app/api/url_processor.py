@@ -5,7 +5,10 @@ from app.dependencies import get_current_active_user
 from app.multi_login.service import MultiLoginService
 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/url",
+    tags=["url-processing"],
+)
 multi_login = MultiLoginService()
 
 @router.post("/process_url")
