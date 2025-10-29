@@ -14,7 +14,7 @@ class TestTokenManager:
             It should take the user_auth and token_path parameters and store them as
             instance variables.
         """
-        token_path = 'token.json'
+        token_path = 'tokens.json'
         user_auth = mock_user_auth
         token_manager = TokenManager(user_auth, token_path)
         assert token_manager.token_path == token_path
@@ -28,9 +28,9 @@ class TestTokenManager:
         m = mock_open(read_data=json.dumps(expected_tokens))
         with patch('builtins.open', m):
             token_manager = TokenManager(mock_user_auth)
-            token_manager.token_path = 'token.json'
+            token_manager.token_path = 'tokens.json'
             result = token_manager.load_tokens()
-            m.assert_called_once_with('token.json', 'r')
+            m.assert_called_once_with('tokens.json', 'r')
             assert result == expected_tokens
 
     def test_save(self, mock_user_auth):
@@ -42,9 +42,9 @@ class TestTokenManager:
         with patch('builtins.open', m):
             with patch('json.dump') as mock_json_dump:
                 token_manager = TokenManager(mock_user_auth)
-                token_manager.token_path = 'token.json'
+                token_manager.token_path = 'tokens.json'
                 token_manager.save(expected_tokens)
-                m.assert_called_once_with('token.json', 'w')
+                m.assert_called_once_with('tokens.json', 'w')
                 mock_json_dump.assert_called_once_with(expected_tokens, m())
         
     def test_get_tokens_valid_not_expired(self, mock_user_auth):

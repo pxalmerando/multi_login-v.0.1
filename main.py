@@ -1,15 +1,24 @@
 """FastAPI application entry point."""
 from fastapi import FastAPI
-from app.api import auth, url_processor
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.http import auth_routes
+from app.api.websocket import websocket_routes
+
 
 app = FastAPI()
 
-# Include routers
-app.include_router(auth.router)
-app.include_router(url_processor.router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+app.include_router(auth_routes.router)
+app.include_router(websocket_routes.router)
 
-@app.get("/")
+@app.get('/')
 def root():
     """Health check endpoint."""
     return {"status": "ok", "message": "API is running"}
