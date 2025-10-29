@@ -1,12 +1,14 @@
-from selenium.common.exceptions import TimeoutException, WebDriverException
-from src.http_client import HttpClient
-from src.folder_manager import FolderManager
-from src.profile_manager import ProfileManager
-from src.token_manager import TokenManager
-from src.auth import UserAuth
+from app.utils.http_client import HttpClient
+from app.services.multilogin.auth import UserAuth
+from app.services.multilogin.folder_manager import FolderManager
+from app.services.multilogin.token_manager import TokenManager
+from app.services.multilogin.profile_manager import ProfileManager
+from app.services.selenium_manager import SeleniumManager
+from selenium.common.exceptions import WebDriverException, TimeoutException
+
 from decouple import config
 import random
-from .browser_manager import BrowserManager
+
 
 class MultiLoginService:
 
@@ -79,16 +81,17 @@ class MultiLoginService:
             self.stop_profile(profile['profile_id'])
         self.PROFILE_RUNNING.clear()
     def start_profile(self) -> str:
-        print(self.PROFILE_RUNNING)
         try:
-            selenium_port = self._get_running_profile_port(self.profile_id)
             
-            if selenium_port:
-                selenium_url = f"http://localhost:{selenium_port}"
-                return selenium_url
-
             endpoint = f"api/v1/profile/f/{self.folder_id}/p/{self.profile_id}/start?automation_type=selenium"
             response = self.http_launcher.get(endpoint, headers=self.headers)
+
+            if response.get('status', {}).get('http_code',{}) == 400:
+                selenium_port = self._get_running_profile_port(self.profile_id)
+                if selenium_port:
+                    selenium_url = f"http://localhost:{selenium_port}"
+                    return selenium_url
+                
             selenium_port = response.get('status', {}).get('message')
             selenium_url = f"http://localhost:{selenium_port}"
 
@@ -98,21 +101,22 @@ class MultiLoginService:
             })
 
             return selenium_url
-
-
         except Exception as e:
             print(f"Failed to start profile {self.profile_id}: {e}")
             return None    
     def stop_profile(self, profile_id: str):
-        endpoint = f"api/v1/profile/stop/p/{profile_id}"
-        return self.http_launcher.get(endpoint=endpoint, headers=self.headers)
-
+        try:
+            endpoint = f"api/v1/profile/stop/p/{profile_id}"
+            self.PROFILE_RUNNING = [p for p in self.PROFILE_RUNNING if p.get("profile_id") != profile_id]
+            self.http_launcher.get(endpoint=endpoint, headers=self.headers)
+        except Exception as e:
+            print(f"Failed to stop profile {profile_id}: {e}")
 
     def process_url(self, url: str):
         try:               
             selenium_url = self.start_profile()
             if selenium_url:
-                with BrowserManager(selenium_url=selenium_url) as driver:
+                with SeleniumManager(selenium_url=selenium_url) as driver:
                     driver.get(url)
                     return {
                         "success": True,
@@ -123,7 +127,7 @@ class MultiLoginService:
             print("Failed to start profile", selenium_url)
 
         except (WebDriverException, TimeoutException) as e:
-            self.PROFILE_RUNNING = [p for p in self.PROFILE_RUNNING if p.get("profile_id") != self.profile_id]
+            
             self.stop_profile(self.profile_id)
             return {
                 "success": False,

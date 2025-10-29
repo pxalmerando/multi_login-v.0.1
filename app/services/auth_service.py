@@ -1,11 +1,11 @@
 """Authentication service for business logic."""
 from typing import Optional
 from datetime import timedelta
-from app.models.models import User, UserInDB, AuthToken
+from app.models.schemas.user_schema import UserBase, UserInDB
+from app.models.schemas.auth_schema import AuthToken
 from app.security import Security
-from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
-from app.users.repository import user_repository
-
+from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from app.database.repository import user_repository
 
 class AuthService:
     """Handles authentication-related business logic."""
@@ -15,7 +15,7 @@ class AuthService:
     
     def authenticate_user(self, email: str, password: str) -> Optional[UserInDB]:
         """Authenticate a user with email and password."""
-        user = self.repository.get_by_email(email)
+        user = self.repository.get_user_by_email(email)
         if not user:
             return None
         if not Security.verify_password(password, user.hashed_password):
@@ -30,7 +30,7 @@ class AuthService:
             expires_delta=access_token_expires
         )
         
-        user_data = User(
+        user_data = UserBase(
             email=user.email,
             username=user.username,
             first_name=user.first_name,

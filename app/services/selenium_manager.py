@@ -1,6 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-class BrowserManager:
+class SeleniumManager:
     """Handles WebDriver operations"""
     
     def __init__(self, selenium_url: str):
