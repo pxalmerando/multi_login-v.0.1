@@ -121,14 +121,16 @@ class UserAuth:
             refresh_token=refresh_token,
             token_expiration= time.time() + self.token_duration_seconds
         )
-    def login(self):
+    async def login(self):
         """
             Login the user and set the tokens.
 
             Returns:
                 dict: A dictionary containing the access token, refresh token, and token expiration time.
         """
-        response = self.http_client.post('/user/signin', json={"email": self.email, "password": self._hash_password()}).get('data')
+        response = await self.http_client.post('/user/signin', json={"email": self.email, "password": self._hash_password()})
+
+        response = response.get('data')
 
         print(response)
 

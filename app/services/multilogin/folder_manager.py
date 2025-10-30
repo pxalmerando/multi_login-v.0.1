@@ -18,7 +18,7 @@ class FolderManager(BaseManagerApi):
         """
         super().__init__(api_url, api_token)
     
-    def create_folder(self, folder_name: str, comment: str = None):
+    async def create_folder(self, folder_name: str, comment: str = None):
         """
             Create a new folder in the workspace.
 
@@ -33,35 +33,35 @@ class FolderManager(BaseManagerApi):
             'name': folder_name,
             'comment': comment
         }
-        return self.request('POST', 'workspace/folder_create', include_auth=True, json=json)
+        return await self.request('POST', 'workspace/folder_create', include_auth=True, json=json)
     
-    def list_folders(self):
+    async def list_folders(self):
         """
             List all folders in the workspace.
 
             Returns:
                 dict: The response from the server.
         """
-        return self.request('GET', 'workspace/folders', include_auth=True)
+        return await self.request('GET', 'workspace/folders', include_auth=True)
     
-    def get_folder_name(self) -> list:
+    async def get_folder_name(self) -> list:
         try:
-            list_response = self.list_folders()
+            list_response = await self.list_folders()
             folders = [folder.get('name') for folder in list_response.get('data', {}).get('folders', [])]
             return folders
         except ValueError as e:
             print(f"Error retrieving folder names: {e}")
             return []
     
-    def get_folder_ids(self) -> list:
+    async def get_folder_ids(self) -> list:
         try:
-            list_response = self.list_folders()
+            list_response = await self.list_folders()
             folders = [folder.get('folder_id') for folder in list_response.get('data', {}).get('folders', [])]
             return folders
         except ValueError as e:
             print(f"Error retrieving folder IDs: {e}")
             return []
-    def update_folder(self, folder_id: str, new_folder_name: str, comment: str = None):
+    async def update_folder(self, folder_id: str, new_folder_name: str, comment: str = None):
         """
             Update the name and comment of a folder.
 
@@ -78,9 +78,9 @@ class FolderManager(BaseManagerApi):
             'name': new_folder_name,
             'comment': comment
         }
-        return self.request('POST', 'workspace/folder_update', include_auth=True, json=json)
+        return await self.request('POST', 'workspace/folder_update', include_auth=True, json=json)
     
-    def delete_folder(self, folder_id: str):
+    async def delete_folder(self, folder_id: str):
         """
             Delete a folder in the workspace.
 
@@ -93,4 +93,4 @@ class FolderManager(BaseManagerApi):
         json = {
             'ids': [folder_id]
         }
-        return self.request('POST', 'workspace/folders_remove', include_auth=True, json=json)
+        return await self.request('POST', 'workspace/folders_remove', include_auth=True, json=json)

@@ -36,7 +36,7 @@ class TokenManager:
         with open(self.token_path, 'w') as token:
             json.dump(tokens, token)
 
-    def get_tokens(self):
+    async def get_tokens(self):
         """
             Retrieves authentication tokens from storage or by calling the UserAuth login method.
 
@@ -55,7 +55,7 @@ class TokenManager:
                 return self.user_auth.to_dict()
             
         try:
-            self.user_auth.login()
+            await self.user_auth.login()
             tokens = self.user_auth.to_dict()
             self.save(tokens)
             return tokens

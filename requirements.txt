@@ -1,5 +1,6 @@
 requests==2.32.5
-pytest
+pytest-asyncio==1.2.0
+pytest>=7.0.0
 uvicorn==0.37.0
 fastapi==0.119.0
 python-jose==3.5.0
@@ -10,3 +11,4 @@ bcrypt==4.3.0
 python-multipart==0.0.20
 python-decouple==3.8
 websockets==15.0.1
+httpx==0.28.1

@@ -15,6 +15,6 @@ class BaseManagerApi(HttpClient):
 
         return headers
     
-    def request(self, method: str, endpoint: str, include_auth: bool = False, **kwargs) -> dict:
+    async def request(self, method: str, endpoint: str, include_auth: bool = False, **kwargs) -> dict:
         headers = self._get_headers(include_auth)
-        return self._make_request(method, endpoint, headers=headers, **kwargs)
+        return await self._make_request(method, endpoint, headers=headers, **kwargs)

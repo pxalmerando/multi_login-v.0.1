@@ -33,7 +33,7 @@ class ProfileManager(BaseManagerApi):
             api_token: API token used for authenticated requests.
         """
         super().__init__(api_url, api_token)
-    def _get_profile_field(self, folder_id: str, field_name: str):
+    async def _get_profile_field(self, folder_id: str, field_name: str):
         """Helper to get a specific field from a profile by id.
 
         Args:
@@ -49,7 +49,7 @@ class ProfileManager(BaseManagerApi):
         if not field_name:
             raise ValueError("field_name must be provided")
         try:
-            response = self.list_profiles(folder_id=folder_id)
+            response = await self.list_profiles(folder_id=folder_id)
             profiles = response.get('data', {}).get('profiles', [])
             return [profile.get(field_name, '') for profile in profiles]
         except Exception as e:
@@ -132,7 +132,7 @@ class ProfileManager(BaseManagerApi):
                 payload['parameters'] = {}
             payload['parameters']['proxy'] = proxy
         return payload
-    def create_profile(
+    async def create_profile(
         self, 
         folder_id: str,
         name: str, 
@@ -171,8 +171,8 @@ class ProfileManager(BaseManagerApi):
             proxy=proxy,
             include_full_parameters=True,
         )
-        return self.request('POST', 'profile/create', include_auth=True, json=payload)
-    def list_profiles(
+        return await self.request('POST', 'profile/create', include_auth=True, json=payload)
+    async def list_profiles(
         self, 
         folder_id: str, 
         is_removed: bool = False, 
@@ -212,7 +212,7 @@ class ProfileManager(BaseManagerApi):
             'order_by': order_by,
             'sort': sort,
         }
-        return self.request('POST', 'profile/search', include_auth=True, json=payload)
+        return await self.request('POST', 'profile/search', include_auth=True, json=payload)
     
     def get_profile_names(self, folder_id: str) -> List[str]:
         """Return a list of profile names for the given folder.
@@ -236,7 +236,7 @@ class ProfileManager(BaseManagerApi):
             returned. Raises ValueError if folder_id is falsy.
         """
         return self._get_profile_field(folder_id, 'id')
-    def update_profile(
+    async def update_profile(
         self,
         profile_id: str,
         folder_id: str,
@@ -271,8 +271,8 @@ class ProfileManager(BaseManagerApi):
             profile_id=profile_id,
             include_full_parameters=True,
         )
-        return self.request("POST", "profile/update", include_auth=True, json=payload)
-    def delete_profile(
+        return await self.request("POST", "profile/update", include_auth=True, json=payload)
+    async def delete_profile(
         self, 
         profile_id: str, 
         is_permanent: bool = True
@@ -293,7 +293,7 @@ class ProfileManager(BaseManagerApi):
                 'ids': [profile_id],
                 'permanently': is_permanent
             }
-            return self.request('POST', 'profile/remove', include_auth=True, json=payload)
+            return await self.request('POST', 'profile/remove', include_auth=True, json=payload)
         except Exception as e:
             print(f"Failed to delete profile {profile_id}: {e}")
             return {}

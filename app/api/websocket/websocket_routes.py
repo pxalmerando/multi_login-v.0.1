@@ -1,9 +1,9 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from app.services.multi_login_service import MultiLoginService
-from app.api.websocket.websocket_handlers import process_url
+from app.api.websocket.websocket_handlers import process_multiple_urls
 from app.core.config import SECRET_KEY, ALGORITHM
 from fastapi import status
 from jose import jwt, JWTError
+from app.services.multi_login_service import MultiLoginService
 
 router = APIRouter(
     prefix="/ws",
@@ -31,6 +31,7 @@ async def connect(
             reason=str(e),
         )
         print(f"Failed to decode token: {e}")
+        return
 
     await websocket.accept()
     await websocket.send_json({
@@ -39,22 +40,36 @@ async def connect(
     })
 
     processor = MultiLoginService()
-    active_profile_id = None
-
+    await processor.initialize()
 
     try:
         while True:
             data = await websocket.receive_json()
-            url = data.get("url")
-            if not url:
+            urls = data.get("urls", [])
+            
+            # Better URL validation
+            if not urls or not isinstance(urls, list):
                 await websocket.send_json({
                     "status": "error",
-                    "message": "No URL provided"
+                    "message": "Invalid URLs provided - expected a list of URLs"
+                })
+                continue
+                
+            # Filter out any None or empty URLs
+            valid_urls = [url for url in urls if url and isinstance(url, str)]
+            
+            if not valid_urls:
+                await websocket.send_json({
+                    "status": "error", 
+                    "message": "No valid URLs provided"
                 })
                 continue
             
-            active_profile_id = processor.profile_id
-            await process_url(url=url, processor=processor, websocket=websocket)
+            await process_multiple_urls(
+                urls=valid_urls,
+                websocket=websocket,
+                processor=processor
+            )
 
     except WebSocketDisconnect:
         print(f"Disconnected: {user['email']}")
@@ -63,9 +78,3 @@ async def connect(
             "status": "error",
             "message": f"Unexpected server error: {str(e)}"
         })
-    finally:
-        # Cleanup the specific profile or all profiles
-        if active_profile_id:
-            processor.stop_profile(active_profile_id)
-        else:
-            processor.cleanup()
