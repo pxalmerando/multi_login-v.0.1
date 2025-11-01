@@ -46,7 +46,7 @@ async def connect(
         while True:
             data = await websocket.receive_json()
             urls = data.get("urls", [])
-            
+
             # Better URL validation
             if not urls or not isinstance(urls, list):
                 await websocket.send_json({
@@ -54,6 +54,7 @@ async def connect(
                     "message": "Invalid URLs provided - expected a list of URLs"
                 })
                 continue
+
                 
             # Filter out any None or empty URLs
             valid_urls = [url for url in urls if url and isinstance(url, str)]
@@ -64,10 +65,11 @@ async def connect(
                     "message": "No valid URLs provided"
                 })
                 continue
-            
+            print(valid_urls)
+
             await process_multiple_urls(
-                urls=valid_urls,
                 websocket=websocket,
+                urls=valid_urls,
                 processor=processor
             )
 

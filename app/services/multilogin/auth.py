@@ -132,8 +132,6 @@ class UserAuth:
 
         response = response.get('data')
 
-        print(response)
-
         self.set_new_tokens(
             access_token=response['token'],
             refresh_token=response['refresh_token']

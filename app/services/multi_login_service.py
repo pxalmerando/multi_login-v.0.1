@@ -3,13 +3,13 @@ from app.services.multilogin.auth import UserAuth
 from app.services.multilogin.folder_manager import FolderManager
 from app.services.multilogin.token_manager import TokenManager
 from app.services.multilogin.profile_manager import ProfileManager
+from app.models.schemas.profile_models import MultiLoginProfileSession
 
 from decouple import config
 import random
 
 
 class MultiLoginService:
-
     LAUNCHER_URL = "https://launcher.mlx.yt:45001"
     BASE_URL = "https://api.multilogin.com"
 
@@ -78,31 +78,30 @@ class MultiLoginService:
 
     async def start_profile(self, profile_id: str) -> str:
         folder_id = await self.get_folder_id()
-
-        try:
-            
+        try:         
             endpoint = f"api/v1/profile/f/{folder_id}/p/{profile_id}/start?automation_type=selenium"
             response = await self.http_launcher.get(endpoint, headers=self.headers)
+            try:
+                http_code = response.get("status", {}).get("http_code", None)
+                selenium_port = response.get("status", {}).get("message", None)
 
-            if response.get('status', {}).get('http_code',{}) == 400:
-                selenium_port = self._get_running_profile_port(profile_id)
-                if selenium_port:
-                    selenium_url = f"http://localhost:{selenium_port}"
-                    return selenium_url
-                
-            selenium_port = response.get('status', {}).get('message')
-            selenium_url = f"http://localhost:{selenium_port}"
+                selenium_url = MultiLoginProfileSession(
+                    profile_id=profile_id,
+                    selenium_port=selenium_port
+                )
 
-            self.profile_running.append({
-                "profile_id": profile_id,
-                "selenium_port": selenium_port
-            })
-
-            return selenium_url
+                url = selenium_url.selenium_url
+                print(url)
+                self.profile_running.append({
+                    "profile_id": profile_id,
+                    "selenium_port": selenium_port
+                })
+                return url
+            except Exception as e:
+                print(f"Failed to get http_code or selenium_port: {e}")
         except Exception as e:
             print(f"Failed to start profile {profile_id}: {e}")
             return None
-        
     async def stop_profile(self, profile_id: str):
         try:
             endpoint = f"api/v1/profile/stop/p/{profile_id}"
