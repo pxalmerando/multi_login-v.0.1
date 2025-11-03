@@ -14,34 +14,27 @@ class ProfileAllocationService:
     async def pair_urls_with_profile(
             self,
             urls: List[str],
+            max_profiles: int
     ) -> List[Tuple[str, str]]:
         
         await self.multi_login_service.initialize()
         folder_id = await self.multi_login_service.get_folder_id()
         profile_ids = await self.multi_login_service.profile_manager.get_profile_ids(folder_id=folder_id)
+
+        if not profile_ids:
+            raise ValueError("No profiles available for allocation")
         
-        profile_queue = asyncio.Queue()
+        if max_profiles <= 0:
+            raise ValueError("max_profiles must be greater than 0")
         
-        for profile in profile_ids:
-            await profile_queue.put(profile)
+        profile_ids_to_use = profile_ids[:max_profiles]
+        print(f"Using profile IDs: {profile_ids_to_use}")
 
         results = []
 
-        async def process_url(url: str) -> List[Tuple[str, str]]:
-            profile_id = await profile_queue.get()
-            try:
-                results.append((url, profile_id))
-            except Exception as e:
-                print(f"Failed to process url {url}: {e}")
-            finally:
-                await profile_queue.put(profile_id)
-        
-        tasks = [
-            process_url(url)
-            for url in urls
-        ]
-
-        await asyncio.gather(*tasks)
+        for index, url in enumerate(urls):
+            profile_id = profile_ids_to_use[index % len(profile_ids_to_use)]
+            results.append((url, profile_id))
 
         return results
 

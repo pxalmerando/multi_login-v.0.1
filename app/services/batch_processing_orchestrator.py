@@ -44,6 +44,7 @@ class BatchProcessingOrchestrator:
         try:
             url_profile_pairs = await self.profile_allocator.pair_urls_with_profile(
                 urls=urls,
+                max_profiles=self.max_concurrency
             )
 
             print(f"URL-Profile Pairs: {url_profile_pairs}")
@@ -52,10 +53,13 @@ class BatchProcessingOrchestrator:
                 url_profile_pairs
             )
 
+            print(f"Batch Results: {results}")
+
             
             batch_result = self._create_batch_result(
                 results=results,
             )
+
 
             await self.notifier.notify_batch_completed(
                 successful_urls=batch_result.successful_urls,
@@ -117,9 +121,10 @@ class BatchProcessingOrchestrator:
                         error_message=str(result),
                     )
                 )
-            processed_results.append(
-                result
-            )
+            else:
+                processed_results.append(
+                   result
+                )
         print(f"Processed results: {processed_results}")
         print(f"Url profile pairs: {url_profile_pairs}")
         return processed_results
@@ -143,6 +148,8 @@ class BatchProcessingOrchestrator:
             selenium_url = await self.multi_login_service.start_profile(
                 profile_id=profile_id
             )
+
+            print(selenium_url)
 
             if selenium_url is None:
                 return ProcessingResult(
@@ -176,6 +183,7 @@ class BatchProcessingOrchestrator:
                 )
 
             return result
+        
         except Exception as e:
             if profile_id:
                 try:
@@ -184,14 +192,11 @@ class BatchProcessingOrchestrator:
                     )
                 except Exception as e:
                     print(f"Error stopping profile {profile_id}: {e}")
-        finally:
-            if profile_id:
-                try:
-                    await self.multi_login_service.stop_profile(
-                        profile_id=profile_id
-                    )
-                except Exception as e:
-                    print(f"Error stopping profile {profile_id}: {e}")
+            return ProcessingResult(
+            success=False,
+            url=url,
+            error_message=str(e)
+        )
 
     def _create_batch_result(
             self,

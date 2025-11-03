@@ -4,36 +4,48 @@ from app.services.multilogin.folder_manager import FolderManager
 from app.services.multilogin.token_manager import TokenManager
 from app.services.multilogin.profile_manager import ProfileManager
 from app.models.schemas.profile_models import MultiLoginProfileSession
+from app.services.profile_registry import ProfileRegistry
+import asyncio
+from app.core.config import (
+    BASE_URL,
+    LAUNCHER_URL
+)
 
 from decouple import config
 import random
 
 
 class MultiLoginService:
-    LAUNCHER_URL = "https://launcher.mlx.yt:45001"
-    BASE_URL = "https://api.multilogin.com"
 
-    def __init__(self) -> None:
+    def __init__(self, base_url: str = None, launcher_url: str = None, email: str = None, password: str = None) -> None:
 
-        self.email = config("EMAIL")
-        self.password = config("PASSWORD")
+        self.email = email or config("EMAIL")
+        self.password = password or config("PASSWORD")
 
-        self.http_client = HttpClient(self.BASE_URL)
-        self.http_launcher = HttpClient(self.LAUNCHER_URL)
+        self.base_url = base_url or BASE_URL
+        self.launcher_url = launcher_url or LAUNCHER_URL
+
+        self.http_client = HttpClient(self.base_url)
+        self.http_launcher = HttpClient(self.launcher_url)
+
+        self.profile_registry = ProfileRegistry()
 
         self._access_token = None
         self._folder_id_cache = None
-        self._profile_id_cache = []
-        self.profile_running = []
+        self.folder_manager = None
+        self.profile_manager = None
+        self.headers = None
+
+        self._profile_locks: dict[str, asyncio.Lock] = {}
 
     async def initialize(self):
         self._access_token = await self._get_tokens()
         self.folder_manager = FolderManager(
-            self.BASE_URL, 
+            self.base_url, 
             self._access_token
         )
         self.profile_manager = ProfileManager(
-            self.BASE_URL, 
+            self.base_url, 
             self._access_token
         )
         self.headers = {
@@ -43,7 +55,7 @@ class MultiLoginService:
     async def _get_tokens(self) -> str:
 
         user_auth = UserAuth(
-            base_url=self.BASE_URL,
+            base_url=self.base_url,
             email=self.email,
             password=self.password,
             http_client=self.http_client
@@ -51,7 +63,12 @@ class MultiLoginService:
         
         token_manager = TokenManager(user_auth)
         results = await token_manager.get_tokens()
-        return results.get("access_token", None)
+        access_token = results.get("access_token")
+
+        if not access_token:
+            raise Exception("Authentication failed. Failed: Unable to obtain access token")
+        
+        return access_token
     
     async def get_folder_id(self):
         if self._folder_id_cache is None:
@@ -64,48 +81,92 @@ class MultiLoginService:
                 self._folder_id_cache = new_folder['id']
 
         return self._folder_id_cache
-    
-    def _get_running_profile_port(self, profile_id: str) -> int:
-        for profile in self.profile_running:
-            if profile['profile_id'] == profile_id:
-                return profile['selenium_port']
 
-        return None
     async def cleanup(self):
-        for profile in self.profile_running:
-            await self.stop_profile(profile['profile_id'])
-        self.profile_running.clear()
 
-    async def start_profile(self, profile_id: str) -> str:
-        folder_id = await self.get_folder_id()
-        try:         
-            endpoint = f"api/v1/profile/f/{folder_id}/p/{profile_id}/start?automation_type=selenium"
-            response = await self.http_launcher.get(endpoint, headers=self.headers)
+        sessions = self.profile_registry.get_all_sessions()
+        if not sessions:
+            print("No profiles running")
+            return
+        
+        print(f"Cleaning up {len(sessions)} running profiles...")
+
+        failures = []
+
+        for session in sessions:
             try:
-                http_code = response.get("status", {}).get("http_code", None)
-                selenium_port = response.get("status", {}).get("message", None)
-
-                selenium_url = MultiLoginProfileSession(
-                    profile_id=profile_id,
-                    selenium_port=selenium_port
-                )
-
-                url = selenium_url.selenium_url
-                print(url)
-                self.profile_running.append({
-                    "profile_id": profile_id,
-                    "selenium_port": selenium_port
-                })
-                return url
+                await self.stop_profile(session.profile_id)
             except Exception as e:
-                print(f"Failed to get http_code or selenium_port: {e}")
-        except Exception as e:
-            print(f"Failed to start profile {profile_id}: {e}")
-            return None
-    async def stop_profile(self, profile_id: str):
-        try:
+                print(f'failed to stop profile {session.profile_id}: {e}')
+                failures.append(session.profile_id)
+        
+        self.profile_registry.clear()
+
+        if failures:
+            print(f"Failed to stop profiles: {failures}")
+        else:
+            print("All profiles stopped successfully")
+    
+    def _parse_profile_start_response(self, response: dict, profile_id: str) -> MultiLoginProfileSession:
+
+        http_code = response.get("status", {}).get("http_code", None)
+        selenium_port = response.get("status", {}).get("message", None)
+
+        if http_code is None or selenium_port is None:
+            raise Exception(f"Invalid response: missing http_code or selenium_port {profile_id}")
+
+        return MultiLoginProfileSession(
+            status_code=http_code,
+            profile_id=profile_id,
+            selenium_port=selenium_port
+        )
+    
+    async def start_profile(self, profile_id: str) -> str:
+
+        if profile_id not in self._profile_locks:
+            self._profile_locks[profile_id] = asyncio.Lock()
+        
+        async with self._profile_locks[profile_id]:
+            existing_session = self.profile_registry.get_session(profile_id=profile_id)
+
+            if existing_session:
+                print(f"Profile {profile_id} already running, reusing session")
+                return existing_session.selenium_url
+                
+            folder_id = await self.get_folder_id()
+            endpoint = f"api/v1/profile/f/{folder_id}/p/{profile_id}/start?automation_type=selenium"
+        
+            try:
+                response = await self.http_launcher.get(endpoint=endpoint, headers=self.headers)
+                session = self._parse_profile_start_response(response, profile_id)
+                
+                if session.status_code == 400:
+                    print(f"Profile {profile_id} is running but not in registry!")
+                
+                # New profile started successfully
+                self.profile_registry.register(session)
+                print(f"Profile {profile_id} started on port {session.selenium_port}")
+                return session.selenium_url
+            
+            except Exception as e:
+                raise Exception(f"Failed to start profile {profile_id}: {e}") from e
+
+    async def stop_profile(self, profile_id: str) -> None:
+
+        if profile_id not in self._profile_locks:
+            self._profile_locks[profile_id] = asyncio.Lock()
+
+        async with self._profile_locks[profile_id]:
+
+            if not self.profile_registry.is_running(profile_id):
+                print(f"Profile {profile_id} is not running.")
+                return
+            
             endpoint = f"api/v1/profile/stop/p/{profile_id}"
-            self.profile_running = [p for p in self.profile_running if p.get("profile_id") != profile_id]
-            await self.http_launcher.get(endpoint=endpoint, headers=self.headers)
-        except Exception as e:
-            print(f"Failed to stop profile {profile_id}: {e}")
+            try:
+                await self.http_launcher.get(endpoint=endpoint, headers=self.headers)
+                self.profile_registry.unregister(profile_id)
+                print(f"Profile {profile_id} stopped")
+            except Exception as e:
+                self.profile_registry.unregister(profile_id)
+                raise Exception(f"Failed to stop profile {profile_id}: {e}") from e

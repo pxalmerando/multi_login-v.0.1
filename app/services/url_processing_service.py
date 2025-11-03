@@ -21,9 +21,10 @@ class URLProcessingService:
             return ProcessingResult(
                 success=True,
                 url=url,
-                title=browser_data["title"],
+                web_title=browser_data["title"],
                 html_source=browser_data["page_source"]
             )
+        
         except TimeoutException as e:
             return ProcessingResult(
                 success=False,

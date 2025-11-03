@@ -8,7 +8,7 @@ class ProcessingResult:
     """Result of processing a single URL"""
     success: bool
     url: str
-    title: Optional[str] = None
+    web_title: Optional[str] = None
     html_source: Optional[str] = None
     error_message: Optional[str] = None
     processed_at: datetime = None
@@ -22,7 +22,7 @@ class ProcessingResult:
         return {
             "success": self.success,
             "url": self.url,
-            "title": self.title,
+            "web_title": self.web_title,
             "html_source": self.html_source,
             "error_message": self.error_message,
             "processed_at": self.processed_at.isoformat() if self.processed_at else None
