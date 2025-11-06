@@ -65,7 +65,8 @@ async def connect(
                     "message": "No valid URLs provided"
                 })
                 continue
-
+            print(f"{valid_urls}")
+            
             await process_multiple_urls(
                 websocket=websocket,
                 urls=valid_urls,

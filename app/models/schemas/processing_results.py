@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 
 
@@ -12,6 +12,7 @@ class ProcessingResult:
     html_source: Optional[str] = None
     error_message: Optional[str] = None
     processed_at: datetime = None
+    metadata: Optional[Dict[str, Any]] = None
     
     def __post_init__(self):
         if self.processed_at is None:
