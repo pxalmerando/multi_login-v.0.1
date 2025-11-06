@@ -14,7 +14,8 @@ class BatchProcessingOrchestrator:
             self,
             multi_login_service: MultiLoginService,
             notifier: WebSocketNotifier,
-            max_concurrency: int
+            max_concurrency: int,
+            profile_allocator: ProfileAllocationService
 
     ) -> None:
         
@@ -23,7 +24,7 @@ class BatchProcessingOrchestrator:
         self.max_concurrency = max_concurrency
 
         self.url_processor = URLProcessingService()
-        self.profile_allocator = ProfileAllocationService(multi_login_service=multi_login_service)
+        self.profile_allocator = profile_allocator
 
     async def process_batch(self, urls: List[str]):
 
@@ -44,7 +45,7 @@ class BatchProcessingOrchestrator:
         try:
             url_profile_pairs = await self.profile_allocator.pair_urls_with_profile(
                 urls=urls,
-                max_profiles=self.max_concurrency
+                max_profiles=self.max_concurrency,
             )
 
             print(f"URL-Profile Pairs: {url_profile_pairs}")
@@ -125,8 +126,6 @@ class BatchProcessingOrchestrator:
                 processed_results.append(
                    result
                 )
-        print(f"Processed results: {processed_results}")
-        print(f"Url profile pairs: {url_profile_pairs}")
         return processed_results
     
 
@@ -148,8 +147,6 @@ class BatchProcessingOrchestrator:
             selenium_url = await self.multi_login_service.start_profile(
                 profile_id=profile_id
             )
-
-            print(selenium_url)
 
             if selenium_url is None:
                 return ProcessingResult(
@@ -175,7 +172,19 @@ class BatchProcessingOrchestrator:
                 selenium_url=selenium_url
             )
 
+            if result.captcha_detected:
+                await self.notifier.notify_error(
+                    f"CAPTCHA detected for URL: {url}"
+                )
 
+                await self.multi_login_service.stop_profile(
+                    profile_id=profile_id
+                    )
+                
+                await self.multi_login_service.delete_profile(
+                    profile_id=profile_id
+                    )
+                
             if result.success:
                 await self.notifier.notify_completed(
                     message=f"URL processed successfully",

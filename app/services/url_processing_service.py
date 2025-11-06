@@ -23,6 +23,7 @@ class URLProcessingService:
                 captcha_result = browser_data["captcha_result"]
                 return ProcessingResult(
                     success=False,
+                    captcha_detected=True,
                     url=url,
                     error_message=f"CAPTCHA Detected: {captcha_result.captcha_type}",
                     metadata={

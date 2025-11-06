@@ -8,6 +8,7 @@ class ProcessingResult:
     """Result of processing a single URL"""
     success: bool
     url: str
+    captcha_detected: bool = False
     web_title: Optional[str] = None
     html_source: Optional[str] = None
     error_message: Optional[str] = None

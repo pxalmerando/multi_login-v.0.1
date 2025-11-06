@@ -28,7 +28,6 @@ class ProfileRegistry:
     
     def clear(self):
         self._sessions.clear()
-        self.available_selenium_urls.clear()
 
     def count(self) -> int:
         return len(self._sessions)

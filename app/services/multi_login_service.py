@@ -5,6 +5,7 @@ from app.services.multilogin.token_manager import TokenManager
 from app.services.multilogin.profile_manager import ProfileManager
 from app.models.schemas.profile_models import MultiLoginProfileSession
 from app.services.profile_registry import ProfileRegistry
+from collections import defaultdict
 import asyncio
 from app.core.config import (
     BASE_URL,
@@ -36,8 +37,8 @@ class MultiLoginService:
         self.profile_manager = None
         self.headers = None
 
-        self._profile_locks: dict[str, asyncio.Lock] = {}
-
+        self._profile_locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        
     async def initialize(self):
         self._access_token = await self._get_tokens()
         self.folder_manager = FolderManager(
@@ -101,6 +102,7 @@ class MultiLoginService:
                 failures.append(session.profile_id)
         
         self.profile_registry.clear()
+        self._profile_locks.clear()
 
         if failures:
             print(f"Failed to stop profiles: {failures}")
@@ -120,12 +122,15 @@ class MultiLoginService:
             profile_id=profile_id,
             selenium_port=selenium_port
         )
-    
-    async def start_profile(self, profile_id: str) -> str:
+    async def delete_profile(self, profile_id: str) -> None:
+        async with self._profile_locks[profile_id]:
+            try:
+                await self.profile_manager.delete_profile(profile_id)
+                print(f"Profile {profile_id} deleted")
+            except Exception as e:
+                print(f"Failed to delete profile {profile_id}: {e}")
 
-        if profile_id not in self._profile_locks:
-            self._profile_locks[profile_id] = asyncio.Lock()
-        
+    async def start_profile(self, profile_id: str) -> str:        
         async with self._profile_locks[profile_id]:
             existing_session = self.profile_registry.get_session(profile_id=profile_id)
 
@@ -152,10 +157,6 @@ class MultiLoginService:
                 raise Exception(f"Failed to start profile {profile_id}: {e}") from e
 
     async def stop_profile(self, profile_id: str) -> None:
-
-        if profile_id not in self._profile_locks:
-            self._profile_locks[profile_id] = asyncio.Lock()
-
         async with self._profile_locks[profile_id]:
 
             if not self.profile_registry.is_running(profile_id):
