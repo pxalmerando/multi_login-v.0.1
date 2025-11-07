@@ -1,7 +1,6 @@
 from typing import Dict, Any, List, Optional
 from .base_manager import BaseManagerApi
 
-
 class ProfileManager(BaseManagerApi):
     """Manager for creating, listing, updating and deleting profiles.
 
@@ -21,7 +20,6 @@ class ProfileManager(BaseManagerApi):
     DEFAULT_SORT = 'asc'
     DEFAULT_ORDER_BY = 'created_at'
     DEFAULT_STORAGE_TYPE = 'all'
-
 
     def __init__(self, api_url: str, api_token: str) -> None:
         """Initialize the ProfileManager.
@@ -53,7 +51,7 @@ class ProfileManager(BaseManagerApi):
             profiles = response.get('data', {}).get('profiles', [])
             return [profile.get(field_name, '') for profile in profiles]
         except Exception as e:
-            print(f"Failed to get field '{field_name}' for profile {folder_id}: {e}")
+            print(f"Failed to get field '{field_name}' for folder {folder_id}: {e}")
             return []
     def _build_profile_payload(
         self,
@@ -225,7 +223,7 @@ class ProfileManager(BaseManagerApi):
             returned. Raises ValueError if folder_id is falsy.
         """
         return self._get_profile_field(folder_id, 'name')
-    def get_profile_ids(self, folder_id: str) -> List[str]:
+    async def get_profile_ids(self, folder_id: str) -> List[str]:
         """Return a list of profile IDs for the given folder.
 
         Args:
@@ -235,7 +233,7 @@ class ProfileManager(BaseManagerApi):
             A list of profile id strings. If an error occurs an empty list is
             returned. Raises ValueError if folder_id is falsy.
         """
-        return self._get_profile_field(folder_id, 'id')
+        return await self._get_profile_field(folder_id, 'id')
     async def update_profile(
         self,
         profile_id: str,

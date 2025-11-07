@@ -38,7 +38,7 @@ class HttpClient:
         url = self._full_url(endpoint)
 
         try:
-            # response = requests.request(method, url, **kwargs)
+            
             response = await self.client.request(method, url, **kwargs)
             response.raise_for_status()
             return response.json()

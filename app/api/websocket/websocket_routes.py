@@ -11,7 +11,6 @@ router = APIRouter(
     tags=["websocket"],
 )
 
-
 @router.websocket("/process_url")
 async def connect(
     websocket: WebSocket,
@@ -66,7 +65,6 @@ async def connect(
                     "message": "No valid URLs provided"
                 })
                 continue
-            print(f"{valid_urls}")
             
             await process_multiple_urls(
                 websocket=websocket,

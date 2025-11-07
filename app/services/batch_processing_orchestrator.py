@@ -6,8 +6,6 @@ from app.services.profile_allocation_service import ProfileAllocationService
 from app.services.multi_login_service import MultiLoginService
 from app.adapters.websocket_notifier import WebSocketNotifier
 
-
-
 class BatchProcessingOrchestrator:
 
     def __init__(
@@ -43,24 +41,16 @@ class BatchProcessingOrchestrator:
         )
 
         try:
-            url_profile_pairs = await self.profile_allocator.pair_urls_with_profile(
+            folder_id = await self.multi_login_service.get_folder_id()
+
+            results = await self._process_with_jit_allocation(
                 urls=urls,
-                max_profiles=self.max_concurrency,
+                folder_id=folder_id
             )
 
-            print(f"URL-Profile Pairs: {url_profile_pairs}")
-
-            results = await self._process_with_concurrency(
-                url_profile_pairs
-            )
-
-            print(f"Batch Results: {results}")
-
-            
             batch_result = self._create_batch_result(
                 results=results,
             )
-
 
             await self.notifier.notify_batch_completed(
                 successful_urls=batch_result.successful_urls,
@@ -73,59 +63,68 @@ class BatchProcessingOrchestrator:
             await self.notifier.notify_error(f"Batch processing failed: {str(e)}")
             raise
 
-
-    async def _process_with_concurrency(
-            self, 
-            url_profile_pairs: List[tuple[str, str]]
+    async def _process_with_jit_allocation(
+        self, 
+        urls: List[str],
+        folder_id: str
     ) -> List[ProcessingResult]:
         
-        semaphore = asyncio.Semaphore(
-            self.max_concurrency
-        )
+        semaphore = asyncio.Semaphore(self.max_concurrency)
 
-        async def process_with_semaphore(
-                url: str,
-                profile_id: str
-        ):
-            
-            
+        async def process_single_url(url: str):
             async with semaphore:
-                return await self._process_single_with_profile(
-                    url,
-                    profile_id
-                )
-            
-        tasks = [
-            asyncio.create_task(
-                process_with_semaphore(
-                    url=url,
-                    profile_id=profile_id
-                )
-            )
-            for url, profile_id in url_profile_pairs
-        ]
-
-        results = await asyncio.gather(
-            *tasks, 
-            return_exceptions=True
-        )
-
+                try:
+                    profile_id = await self.profile_allocator.acquire_profile(
+                        folder_id=folder_id,
+                        max_profiles=self.max_concurrency
+                    )
+                    
+                    print(f"Assigned profile {profile_id} to URL: {url}")
+                    
+                    result = await self._process_single_with_profile(url, profile_id)
+                    return result
+                    
+                except (RuntimeError, ValueError) as e:
+                    print(f"Profile deleted for {url}, retrying: {e}")
+                    
+                    try:
+                        profile_id = await self.profile_allocator.get_available_profile(
+                            folder_id=folder_id,
+                            max_profiles=self.max_concurrency
+                        )
+                        result = await self._process_single_with_profile(url, profile_id)
+                        return result
+                    except Exception as retry_error:
+                        return ProcessingResult(
+                            success=False,
+                            url=url,
+                            error_message=f"Failed after retry: {str(retry_error)}"
+                        )
+                        
+                except Exception as e:
+                    return ProcessingResult(
+                        success=False,
+                        url=url,
+                        error_message=f"Failed to allocate profile: {str(e)}"
+                    )
+        
+        tasks = [process_single_url(url) for url in urls]
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
         processed_results = []
-
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                url = url_profile_pairs[i][0]
                 processed_results.append(
                     ProcessingResult(
                         success=False,
-                        url=url,
+                        url=urls[i],
                         error_message=str(result),
                     )
                 )
             else:
-                processed_results.append(
-                   result
-                )
+                processed_results.append(result)
+                
         return processed_results
     
 
@@ -184,7 +183,7 @@ class BatchProcessingOrchestrator:
                 await self.multi_login_service.delete_profile(
                     profile_id=profile_id
                     )
-                
+                await self.profile_allocator.mark_profile_deleted(profile_id)
             if result.success:
                 await self.notifier.notify_completed(
                     message=f"URL processed successfully",

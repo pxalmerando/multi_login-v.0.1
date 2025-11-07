@@ -15,7 +15,6 @@ from app.core.config import (
 from decouple import config
 import random
 
-
 class MultiLoginService:
 
     def __init__(self, base_url: str = None, launcher_url: str = None, email: str = None, password: str = None) -> None:
@@ -84,7 +83,6 @@ class MultiLoginService:
         return self._folder_id_cache
 
     async def cleanup(self):
-
         sessions = self.profile_registry.get_all_sessions()
         if not sessions:
             print("No profiles running")
@@ -126,6 +124,7 @@ class MultiLoginService:
         async with self._profile_locks[profile_id]:
             try:
                 await self.profile_manager.delete_profile(profile_id)
+                self.profile_registry.unregister(profile_id)
                 print(f"Profile {profile_id} deleted")
             except Exception as e:
                 print(f"Failed to delete profile {profile_id}: {e}")
@@ -145,10 +144,15 @@ class MultiLoginService:
                 response = await self.http_launcher.get(endpoint=endpoint, headers=self.headers)
                 session = self._parse_profile_start_response(response, profile_id)
                 
-                if session.status_code == 400:
-                    print(f"Profile {profile_id} is running but not in registry!")
+                if session.status_code == 401:
+                    raise ValueError(f"Unauthorized to start profile {profile_id}: {session.selenium_port}")
                 
-                # New profile started successfully
+                if session.status_code == 400:
+                    raise ValueError(f"Profile {profile_id} already running or invalid request")
+                
+                if session.status_code != 200:
+                    raise ValueError(f"Failed to start profile {profile_id}: HTTP {session.status_code} - {session.selenium_port}")
+                
                 self.profile_registry.register(session)
                 print(f"Profile {profile_id} started on port {session.selenium_port}")
                 return session.selenium_url
