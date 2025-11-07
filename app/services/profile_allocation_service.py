@@ -25,18 +25,7 @@ class ProfileAllocationService:
         max_profiles: int,
         timeout: float = 30.0
     ) -> Optional[str]:
-        """
-        Acquire an available profile for exclusive use.
-        Waits if all profiles are in use.
         
-        Args:
-            folder_id: The folder to get/create profiles in
-            max_profiles: Maximum number of profiles to maintain
-            timeout: How long to wait for an available profile
-            
-        Returns:
-            A profile_id locked for exclusive use, or None if timeout
-        """
         start_time = asyncio.get_event_loop().time()
         
         while True:
@@ -46,6 +35,12 @@ class ProfileAllocationService:
             
             async with self._profile_creation_lock:
                 await self._refresh_profile_pool(folder_id, max_profiles)
+
+                invalid_in_use = self._in_use_profiles - set(self._profile_pool)
+
+                for profile_id in invalid_in_use:
+                    self._in_use_profiles.remove(profile_id)
+                    print(f"Removed invalid in-use profile {profile_id}")
                 
                 available_profiles = [
                     p for p in self._profile_pool 
@@ -102,30 +97,58 @@ class ProfileAllocationService:
         
         valid_profiles = await self._get_valid_profiles(folder_id)
         
-        
         valid_profiles = [p for p in valid_profiles if p not in self._deleted_profiles]
         
-        
-        if len(valid_profiles) < max_profiles:
-            needed = max_profiles - len(valid_profiles)
+        current_pool_ids = set(self._profile_pool)
+
+        new_profiles = [p for p in valid_profiles if p not in current_pool_ids]
+        for profile_id in new_profiles:
+            if len(self._profile_pool) < max_profiles:
+                self._profile_pool.append(profile_id)
+
+        for profile_id in list(self._profile_pool):
+            if (profile_id not in valid_profiles and 
+                profile_id not in self._in_use_profiles and
+                profile_id not in self._deleted_profiles):
+                self._profile_pool.remove(profile_id)
+
+        if len(self._profile_pool) < max_profiles:
+            needed = max_profiles - len(self._profile_pool)
             print(f"Creating {needed} additional profiles...")
             
+            created_count = 0
             for i in range(needed):
+                if created_count >=2:
+                    print(f'Rate limit protection: waiting before creating more profiles')
+                    await asyncio.sleep(1)
+
                 new_profile = await self._create_single_profile(folder_id=folder_id, name=i)
                 if new_profile:
-                    valid_profiles.append(new_profile)
-        
-        
-        self._profile_pool = valid_profiles[:max_profiles]
+                    self._profile_pool.append(new_profile)
+                    created_count += 1
+
+                else:
+                    print(f"Failed to create profile {i}, stopping creation loop")
+                    break
 
     async def _create_single_profile(self, folder_id: str, name: str) -> Optional[str]:
         
         try:
-            profile_id = await self.multi_login_service.profile_manager.create_profile(
+            response = await self.multi_login_service.profile_manager.create_profile(
                 folder_id=folder_id,
                 name=f"Profile {name}"
             )
-            profile_id = profile_id.get('data', {}).get('ids', [])[0]
+
+            if not response or 'data' not in response:
+                print(f"Invalid API response: {response}")
+                return None
+            
+            profile_ids = response.get('data', {}).get('ids', [])
+            if not profile_ids:
+                print(f"No profile ID in response: {response}")
+                return None
+            
+            profile_id = profile_ids[0]
             print(f"Created profile: {profile_id}")
             return profile_id
         except Exception as e:
