@@ -2,19 +2,18 @@ import pytest
 from app.models.schemas.processing_results import ProcessingResult, BatchProcessingResult
 from datetime import datetime
 
-
 class TestProcessingResult:
     
     def test_processing_result_success(self):
         """Test successful processing result"""
-        # Act
+        
         result = ProcessingResult(
             success=True,
             url="https://example.com",
             web_title="Test Page"
         )
         
-        # Assert
+        
         assert result.success is True
         assert result.url == "https://example.com"
         assert result.web_title == "Test Page"
@@ -22,47 +21,46 @@ class TestProcessingResult:
     
     def test_processing_result_failure(self):
         """Test failed processing result"""
-        # Act
+        
         result = ProcessingResult(
             success=False,
             url="https://example.com",
             error_message="Connection timeout"
         )
         
-        # Assert
+        
         assert result.success is False
         assert result.error_message == "Connection timeout"
     
     def test_processing_result_to_dict(self):
         """Test converting result to dictionary"""
-        # Arrange
+        
         result = ProcessingResult(
             success=True,
             url="https://example.com",
             web_title="Test"
         )
         
-        # Act
+        
         result_dict = result.to_dict()
         
-        # Assert
+        
         assert isinstance(result_dict, dict)
         assert result_dict["success"] is True
         assert result_dict["url"] == "https://example.com"
         assert "processed_at" in result_dict
 
-
 class TestBatchProcessingResult:
     
     def test_batch_processing_result(self):
         """Test batch processing result creation"""
-        # Arrange
+        
         results = [
             ProcessingResult(success=True, url="https://example.com"),
             ProcessingResult(success=False, url="https://test.com", error_message="Error")
         ]
         
-        # Act
+        
         batch_result = BatchProcessingResult(
             total_urls=2,
             successful_urls=1,
@@ -70,7 +68,7 @@ class TestBatchProcessingResult:
             results=results
         )
         
-        # Assert
+        
         assert batch_result.total_urls == 2
         assert batch_result.successful_urls == 1
         assert batch_result.failed_urls == 1
@@ -78,7 +76,7 @@ class TestBatchProcessingResult:
     
     def test_batch_result_to_dict(self):
         """Test converting batch result to dictionary"""
-        # Arrange
+        
         results = [
             ProcessingResult(success=True, url="https://example.com")
         ]
@@ -89,10 +87,10 @@ class TestBatchProcessingResult:
             results=results
         )
         
-        # Act
+        
         result_dict = batch_result.to_dict()
         
-        # Assert
+        
         assert isinstance(result_dict, dict)
         assert result_dict["total_urls"] == 1
         assert len(result_dict["results"]) == 1

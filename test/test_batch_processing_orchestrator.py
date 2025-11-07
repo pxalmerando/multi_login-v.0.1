@@ -3,13 +3,12 @@ from app.services.batch_processing_orchestrator import BatchProcessingOrchestrat
 from app.models.schemas.processing_results import ProcessingResult
 from unittest.mock import AsyncMock, Mock
 
-
 class TestBatchProcessingOrchestrator:
     
     @pytest.mark.asyncio
     async def test_process_batch_empty_urls(self, mock_multi_login_service):
         """Test processing with empty URL list"""
-        # Arrange
+        
         notifier = AsyncMock()
         profile_allocator = AsyncMock()
         
@@ -20,10 +19,10 @@ class TestBatchProcessingOrchestrator:
             profile_allocator=profile_allocator
         )
         
-        # Act
+        
         result = await orchestrator.process_batch([])
         
-        # Assert
+        
         assert result.total_urls == 0
         assert result.successful_urls == 0
         assert result.failed_urls == 0
@@ -32,7 +31,7 @@ class TestBatchProcessingOrchestrator:
     @pytest.mark.asyncio
     async def test_process_batch_successful(self, mock_multi_login_service):
         """Test successful batch processing"""
-        # Arrange
+        
         notifier = AsyncMock()
         profile_allocator = AsyncMock()
         profile_allocator.pair_urls_with_profile = AsyncMock(return_value=[
@@ -47,7 +46,7 @@ class TestBatchProcessingOrchestrator:
             profile_allocator=profile_allocator
         )
         
-        # Mock successful URL processing
+        
         orchestrator._process_single_with_profile = AsyncMock(
             return_value=ProcessingResult(
                 success=True,
@@ -56,10 +55,10 @@ class TestBatchProcessingOrchestrator:
             )
         )
         
-        # Act
+        
         result = await orchestrator.process_batch(["https://example.com", "https://test.com"])
         
-        # Assert
+        
         assert result.total_urls == 2
         assert result.successful_urls == 2
         assert result.failed_urls == 0
@@ -69,7 +68,7 @@ class TestBatchProcessingOrchestrator:
     @pytest.mark.asyncio
     async def test_process_batch_with_failures(self, mock_multi_login_service):
         """Test batch processing with some failures"""
-        # Arrange
+        
         notifier = AsyncMock()
         profile_allocator = AsyncMock()
         profile_allocator.pair_urls_with_profile = AsyncMock(return_value=[
@@ -84,7 +83,7 @@ class TestBatchProcessingOrchestrator:
             profile_allocator=profile_allocator
         )
         
-        # Mock mixed results
+        
         def mock_process(url, profile_id):
             if "fail" in url:
                 return ProcessingResult(
@@ -100,10 +99,10 @@ class TestBatchProcessingOrchestrator:
         
         orchestrator._process_single_with_profile = AsyncMock(side_effect=mock_process)
         
-        # Act
+        
         result = await orchestrator.process_batch(["https://example.com", "https://fail.com"])
         
-        # Assert
+        
         assert result.total_urls == 2
         assert result.successful_urls == 1
         assert result.failed_urls == 1

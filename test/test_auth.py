@@ -121,7 +121,7 @@ class TestUserAuthInitialization:
             correct dictionary.
         """
 
-        # Check that the method raises a ValueError when the access_token is None
+        
         with pytest.raises(ValueError, match="You need to login first"):
             auth.get_auth_header()
 
