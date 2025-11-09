@@ -1,150 +1,105 @@
 import asyncio
 from typing import List, Set, Optional
 from app.services.multi_login_service import MultiLoginService
-
 class ProfileAllocationService:
     """
-    Profile allocation with locking to prevent race conditions.
-    Ensures profiles can't be used by multiple tasks simultaneously.
+    Allocates MultiLogin profiles safely in concurrent environments.
+    Ensures profiles cannot be acquired by multiple tasks at once.
     """
-
-    def __init__(
-        self, 
-        multi_login_service: MultiLoginService,
-    ):
+    def __init__(self, multi_login_service: MultiLoginService, max_profiles: int = 10):
         self.multi_login_service = multi_login_service
-        self._profile_creation_lock = asyncio.Lock()
+        self.max_profiles = max_profiles  
+
+        self._pool_lock = asyncio.Lock()
         self._profile_pool: List[str] = []
         self._deleted_profiles: Set[str] = set()
         self._in_use_profiles: Set[str] = set()
-        self._profile_locks: dict = {}
-
-    async def acquire_profile(
-        self,
-        folder_id: str,
-        max_profiles: int,
-        timeout: float = 30.0
-    ) -> Optional[str]:
-        """
-        Acquire an available profile for exclusive use.
-        Waits if all profiles are in use.
-        
-        Args:
-            folder_id: The folder to get/create profiles in
-            max_profiles: Maximum number of profiles to maintain
-            timeout: How long to wait for an available profile
-            
-        Returns:
-            A profile_id locked for exclusive use, or None if timeout
-        """
-        start_time = asyncio.get_event_loop().time()
-        
+        self._profile_locks: dict[str, asyncio.Lock] = {}
+    async def acquire_profile(self, folder_id: str, timeout: float = 30.0) -> Optional[str]:
+        start = asyncio.get_event_loop().time()
         while True:
-            if asyncio.get_event_loop().time() - start_time > timeout:
-                print(f"Timeout waiting for available profile after {timeout}s")
+            if asyncio.get_event_loop().time() - start > timeout:
+                print(f"[ProfileAllocator] ❌ Timeout waiting for profile")
                 return None
-            
-            async with self._profile_creation_lock:
-                await self._refresh_profile_pool(folder_id, max_profiles)
+            async with self._pool_lock:
                 
-                available_profiles = [
-                    p for p in self._profile_pool 
-                    if p not in self._in_use_profiles 
-                    and p not in self._deleted_profiles
-                ]
-                
-                if available_profiles:
-                    profile_id = available_profiles[0]
-                    self._in_use_profiles.add(profile_id)
-                    print(f"Acquired profile {profile_id} (in use: {len(self._in_use_profiles)}/{len(self._profile_pool)})")
-                    return profile_id
-                
-                if len(self._profile_pool) < max_profiles:
-                    print(f"All profiles in use, creating additional profile...")
-                    new_profile = await self._create_single_profile(folder_id)
-                    if new_profile:
-                        self._profile_pool.append(new_profile)
-                        self._in_use_profiles.add(new_profile)
-                        print(f"Acquired new profile {new_profile}")
-                        return new_profile
-            
-            print(f"All {max_profiles} profiles in use, waiting...")
-            await asyncio.sleep(0.5)
 
+                valid_profiles = await self._get_valid_profiles(folder_id)
+                valid_profiles = [p for p in valid_profiles if p not in self._deleted_profiles]
+                self._profile_pool = valid_profiles
+                for p in valid_profiles:
+                    if p not in self._profile_locks:
+                        self._profile_locks[p] = asyncio.Lock()
+                
+
+                available = [p for p in valid_profiles if p not in self._in_use_profiles]
+                
+
+                for pid in available:
+                    lock = self._profile_locks[pid]
+                    if not lock.locked():
+                        await lock.acquire()
+                        self._in_use_profiles.add(pid)
+                        print(f"[ProfileAllocator] ✅ Reusing profile {pid}")
+                        return pid
+                
+
+                if len(valid_profiles) < self.max_profiles:
+                    print(f"[ProfileAllocator] ➕ Creating new ML profile "
+                          f"({len(valid_profiles)}/{self.max_profiles})")
+                    new_pid = await self._create_single_profile(folder_id, len(valid_profiles))
+                    if new_pid:
+                        self._profile_pool.append(new_pid)
+                        self._profile_locks[new_pid] = asyncio.Lock()
+                        await self._profile_locks[new_pid].acquire()
+                        self._in_use_profiles.add(new_pid)
+                        print(f"[ProfileAllocator] ✅ Created new profile {new_pid}")
+                        return new_pid
+                    print("[ProfileAllocator] ❌ ML create profile failed, retrying...")
+            await asyncio.sleep(0.4)
     async def release_profile(self, profile_id: str):
-        """
-        Release a profile back to the pool for reuse.
-        Call this after you're done using the profile.
-        """
-        async with self._profile_creation_lock:
+        async with self._pool_lock:
             if profile_id in self._in_use_profiles:
                 self._in_use_profiles.remove(profile_id)
-                print(f"Released profile {profile_id} (in use: {len(self._in_use_profiles)}/{len(self._profile_pool)})")
-
+            lock = self._profile_locks.get(profile_id)
+            if lock and lock.locked():
+                try: lock.release()
+                except RuntimeError: pass
+            print(f"[ProfileAllocator] 🔁 Released profile {profile_id} "
+                  f"(in use: {len(self._in_use_profiles)}/{self.max_profiles})")
     async def mark_profile_deleted(self, profile_id: str):
-        """
-        Mark a profile as deleted so it won't be reused.
-        Automatically releases it from in-use set.
-        """
-        async with self._profile_creation_lock:
+        async with self._pool_lock:
+            self._in_use_profiles.discard(profile_id)
+            self._profile_pool = [p for p in self._profile_pool if p != profile_id]
             self._deleted_profiles.add(profile_id)
-            
-            
-            if profile_id in self._in_use_profiles:
-                self._in_use_profiles.remove(profile_id)
-            
-            
-            if profile_id in self._profile_pool:
-                self._profile_pool.remove(profile_id)
-                print(f"Removed deleted profile {profile_id} from pool")
-
-    async def _refresh_profile_pool(self, folder_id: str, max_profiles: int):
-        
-        valid_profiles = await self._get_valid_profiles(folder_id)
-        
-        
-        valid_profiles = [p for p in valid_profiles if p not in self._deleted_profiles]
-        
-        
-        if len(valid_profiles) < max_profiles:
-            needed = max_profiles - len(valid_profiles)
-            print(f"Creating {needed} additional profiles...")
-            
-            for i in range(needed):
-                new_profile = await self._create_single_profile(folder_id=folder_id, name=i)
-                if new_profile:
-                    valid_profiles.append(new_profile)
-        
-        
-        self._profile_pool = valid_profiles[:max_profiles]
-
-    async def _create_single_profile(self, folder_id: str, name: str) -> Optional[str]:
-        
+            lock = self._profile_locks.pop(profile_id, None)
+            if lock and lock.locked():
+                try: lock.release()
+                except RuntimeError: pass
         try:
-            profile_id = await self.multi_login_service.profile_manager.create_profile(
-                folder_id=folder_id,
-                name=f"Profile {name}"
-            )
-            profile_id = profile_id.get('data', {}).get('ids', [])[0]
-            print(f"Created profile: {profile_id}")
-            return profile_id
+            await self.multi_login_service.stop_profile(profile_id)
+            print(f"[ProfileAllocator] 🗑️ Deleted ML profile {profile_id}")
         except Exception as e:
-            print(f"Failed to create profile: {e}")
-            return None
-
+            print(f"[ProfileAllocator] ⚠️ Error stopping deleted profile {profile_id}: {e}")
+    async def _create_single_profile(self, folder_id: str, idx: int) -> Optional[str]:
+        try:
+            resp = await self.multi_login_service.profile_manager.create_profile(
+                folder_id=folder_id, name=f"Profile {idx}"
+            )
+            pid = resp.get("data", {}).get("ids", [None])[0]
+            if pid:
+                print(f"[ProfileAllocator] Created profile {pid}")
+                return pid
+        except Exception as e:
+            print(f"[ProfileAllocator] ❌ Creation error: {e}")
+        return None
     async def _get_valid_profiles(self, folder_id: str) -> List[str]:
-        
         try:
-            profile_ids = await self.multi_login_service.profile_manager.get_profile_ids(
-                folder_id=folder_id
-            )
-            return profile_ids
+            return await self.multi_login_service.profile_manager.get_profile_ids(folder_id=folder_id)
         except Exception as e:
-            print(f"Error getting valid profiles: {e}")
+            print(f"[ProfileAllocator] ⚠️ Fetch error: {e}")
             return []
-
     def get_pool_status(self) -> dict:
-        
         return {
             "total_profiles": len(self._profile_pool),
             "in_use": len(self._in_use_profiles),

@@ -5,13 +5,11 @@ from fastapi import status
 from jose import jwt, JWTError
 from app.services.multi_login_service import MultiLoginService
 from app.services.profile_allocation_service import ProfileAllocationService
-
 router = APIRouter(
     prefix="/ws",
     tags=["websocket"],
 )
-
-@router.websocket("/process_url")
+@router.websocket("/process_urls")
 async def connect(
     websocket: WebSocket,
     token: str
@@ -32,30 +30,24 @@ async def connect(
         )
         print(f"Failed to decode token: {e}")
         return
-
     await websocket.accept()
     await websocket.send_json({
         "status": "connected",
         "message": f"Authenticated as {user['email']}"
     })
-
     processor = MultiLoginService()
     await processor.initialize()
-
     profile_allocator = ProfileAllocationService(multi_login_service=processor)
-
     try:
         while True:
             data = await websocket.receive_json()
             urls = data.get("urls", [])
-
             if not urls or not isinstance(urls, list):
                 await websocket.send_json({
                     "status": "error",
                     "message": "Invalid URLs provided - expected a list of URLs"
                 })
                 continue
-
                 
             valid_urls = [url for url in urls if url and isinstance(url, str)]
             
@@ -72,7 +64,6 @@ async def connect(
                 processor=processor,
                 profile_allocator=profile_allocator,
             )
-
     except WebSocketDisconnect:
         print(f"WebSocket disconnected: {user['email']}")
         await processor.cleanup()

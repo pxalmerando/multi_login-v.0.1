@@ -1,8 +1,6 @@
 from fastapi import WebSocket
 from typing import Optional
 from enum import Enum
-
-
 class NotificationStatus(Enum):
     CONNECTED = "connected"
     PROCESSING = "processing"
@@ -10,8 +8,6 @@ class NotificationStatus(Enum):
     ERROR = "error"
     BATCH_STARTED = "batch_started"
     BATCH_COMPLETED = "batch_completed"
-
-
 class WebSocketNotifier:
     def __init__(
         self, 
@@ -32,14 +28,12 @@ class WebSocketNotifier:
             "status": status.value,
             "message": message,
         }
-
         if data:
             payload["data"] = data
         
         if step is not None and total_steps is not None:
             payload["step"] = step
             payload["total_steps"] = total_steps
-
         await self.websocket.send_json(payload)
     async def notify_processing(
         self, 
@@ -75,18 +69,14 @@ class WebSocketNotifier:
     
     async def notify_batch_started(
             self,
-            total_urls: list[str],
+            total_urls: int,
             max_concurrent: int
     ):
-        
         await self.send_status(
             status=NotificationStatus.BATCH_STARTED,
-            message=f"Processing {len(total_urls)} URLs (max {max_concurrent} concurrent)",
-            data={
-                "total_urls": len(total_urls),
-            }
+            message=f"Processing {total_urls} URLs (max {max_concurrent} concurrent)",
+            data={"total_urls": total_urls}
         )
-
     async def notify_batch_completed(
             self,
             total_urls: int,
@@ -102,9 +92,3 @@ class WebSocketNotifier:
                 "failed_urls": failed_urls
             }
         )
-
-
-
-
-
-
