@@ -48,7 +48,6 @@ class BatchProcessingOrchestrator:
                 failed_urls=batch_result.failed_urls
             )
             print(f"Batch processing completed. {batch_result.successful_urls} URLs processed successfully. {batch_result.failed_urls} URLs failed to process.")
-            print(f"Batch processing completed. {batch_result.successful_urls} URLs processed successfully. {batch_result.failed_urls} URLs failed to process.")
             return batch_result
         except Exception as e:
             await self.notifier.notify_error(f"Batch processing failed: {str(e)}")

@@ -19,7 +19,7 @@ class ProfileAllocationService:
         start = asyncio.get_event_loop().time()
         while True:
             if asyncio.get_event_loop().time() - start > timeout:
-                print(f"[ProfileAllocator] ❌ Timeout waiting for profile")
+                print(f"[ProfileAllocator] Timeout waiting for profile")
                 return None
             async with self._pool_lock:
                 
@@ -40,12 +40,12 @@ class ProfileAllocationService:
                     if not lock.locked():
                         await lock.acquire()
                         self._in_use_profiles.add(pid)
-                        print(f"[ProfileAllocator] ✅ Reusing profile {pid}")
+                        print(f"[ProfileAllocator] Reusing profile {pid}")
                         return pid
                 
 
                 if len(valid_profiles) < self.max_profiles:
-                    print(f"[ProfileAllocator] ➕ Creating new ML profile "
+                    print(f"[ProfileAllocator] Creating new ML profile "
                           f"({len(valid_profiles)}/{self.max_profiles})")
                     new_pid = await self._create_single_profile(folder_id, len(valid_profiles))
                     if new_pid:
@@ -53,9 +53,9 @@ class ProfileAllocationService:
                         self._profile_locks[new_pid] = asyncio.Lock()
                         await self._profile_locks[new_pid].acquire()
                         self._in_use_profiles.add(new_pid)
-                        print(f"[ProfileAllocator] ✅ Created new profile {new_pid}")
+                        print(f"[ProfileAllocator] Created new profile {new_pid}")
                         return new_pid
-                    print("[ProfileAllocator] ❌ ML create profile failed, retrying...")
+                    print("[ProfileAllocator] ML create profile failed, retrying...")
             await asyncio.sleep(0.4)
     async def release_profile(self, profile_id: str):
         async with self._pool_lock:
@@ -65,7 +65,7 @@ class ProfileAllocationService:
             if lock and lock.locked():
                 try: lock.release()
                 except RuntimeError: pass
-            print(f"[ProfileAllocator] 🔁 Released profile {profile_id} "
+            print(f"[ProfileAllocator] Released profile {profile_id} "
                   f"(in use: {len(self._in_use_profiles)}/{self.max_profiles})")
     async def mark_profile_deleted(self, profile_id: str):
         async with self._pool_lock:
@@ -78,9 +78,9 @@ class ProfileAllocationService:
                 except RuntimeError: pass
         try:
             await self.multi_login_service.stop_profile(profile_id)
-            print(f"[ProfileAllocator] 🗑️ Deleted ML profile {profile_id}")
+            print(f"[ProfileAllocator] Deleted ML profile {profile_id}")
         except Exception as e:
-            print(f"[ProfileAllocator] ⚠️ Error stopping deleted profile {profile_id}: {e}")
+            print(f"[ProfileAllocator] Error stopping deleted profile {profile_id}: {e}")
     async def _create_single_profile(self, folder_id: str, idx: int) -> Optional[str]:
         try:
             resp = await self.multi_login_service.profile_manager.create_profile(
@@ -91,13 +91,13 @@ class ProfileAllocationService:
                 print(f"[ProfileAllocator] Created profile {pid}")
                 return pid
         except Exception as e:
-            print(f"[ProfileAllocator] ❌ Creation error: {e}")
+            print(f"[ProfileAllocator] Creation error: {e}")
         return None
     async def _get_valid_profiles(self, folder_id: str) -> List[str]:
         try:
             return await self.multi_login_service.profile_manager.get_profile_ids(folder_id=folder_id)
         except Exception as e:
-            print(f"[ProfileAllocator] ⚠️ Fetch error: {e}")
+            print(f"[ProfileAllocator] Fetch error: {e}")
             return []
     def get_pool_status(self) -> dict:
         return {
