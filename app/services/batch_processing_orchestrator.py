@@ -44,9 +44,10 @@ class BatchProcessingOrchestrator:
             )
             await self.notifier.notify_batch_completed(
                 successful_urls=batch_result.successful_urls,
-                failed_urls=batch_result.failed_urls,
-                total_urls=batch_result.total_urls
+                total_urls=batch_result.total_urls,
+                failed_urls=batch_result.failed_urls
             )
+            print(f"Batch processing completed. {batch_result.successful_urls} URLs processed successfully. {batch_result.failed_urls} URLs failed to process.")
             print(f"Batch processing completed. {batch_result.successful_urls} URLs processed successfully. {batch_result.failed_urls} URLs failed to process.")
             return batch_result
         except Exception as e:
@@ -60,6 +61,7 @@ class BatchProcessingOrchestrator:
         
         semaphore = asyncio.Semaphore(self.max_concurrency)
         async def process_single_url(url: str):
+            profile_id = None
             async with semaphore:
                 try:
                     profile_id = await self.profile_allocator.acquire_profile(
@@ -69,9 +71,17 @@ class BatchProcessingOrchestrator:
                     print(f"Assigned profile {profile_id} to URL: {url}")
                     
                     result = await self._process_single_with_profile(url, profile_id)
+
+                    if not result.captcha_detected:
+                        await self.profile_allocator.release_profile(profile_id)
+
                     return result
                     
+                    
                 except Exception as e:
+
+                    if profile_id:
+                        await self.profile_allocator.release_profile(profile_id)
                     return ProcessingResult(
                         success=False,
                         url=url,
@@ -112,6 +122,7 @@ class BatchProcessingOrchestrator:
             )
             selenium_url = await self.multi_login_service.start_profile(profile_id)
             if selenium_url is None:
+                await self.profile_allocator.mark_profile_deleted(profile_id)
                 return ProcessingResult(
                     success=False,
                     error_message="Failed to start profile",
