@@ -24,8 +24,7 @@ class RecaptchaDetectionStrategy(DetectionStrategy):
             src = iframe.get_attribute("src") or ""
             title = iframe.get_attribute("title") or ""
 
-            if any(domain in src for domain in CaptchaPatterns.RECAPTCHA_DOMAINS or \
-                    "recaptcha" in title.lower()):
+            if any(domain in src for domain in CaptchaPatterns.RECAPTCHA_DOMAINS)  or "recaptcha" in title.lower():
                 
                 return CaptchaResult(
                     detected=True,

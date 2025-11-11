@@ -8,7 +8,7 @@ async def process_multiple_urls(
     urls: list[str],
     processor: MultiLoginService,
     profile_allocator: ProfileAllocationService,
-    max_concurrency: int = 5
+    max_concurrency: int = 3
 ):
     notifier = WebSocketNotifier(
         websocket=websocket,

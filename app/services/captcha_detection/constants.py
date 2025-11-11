@@ -57,4 +57,16 @@ class CaptchaPatterns:
         "automated access", "select all images", "click to verify"
     ]
 
+    BOL_DOMAINS = ["bol.com"]
+    BOL_BLOCK_PHRASES = [
+        "is geblokkeerd",
+        "je toegang tot bol is tijdelijk geblokkeerd",
+        "ip address",
+        "adresse ip .* est bloquée"
+    ]
+    BOL_BLOCK_SELECTORS = [
+        (By.ID, "message"),
+        (By.CSS_SELECTOR, "h1.bol_header")
+    ]
+
     

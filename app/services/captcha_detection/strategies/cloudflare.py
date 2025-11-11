@@ -57,7 +57,7 @@ class CloudflareDetectionStrategy(DetectionStrategy):
                 self.driver.find_element(by, value)
                 return CaptchaResult(
                     detected=True,
-                    type="Cloudflare Challenge",
+                    captcha_type="Cloudflare Challenge",
                     details=f"Found Cloudflare element with {by}: {value}",
                     confidence=ConfidenceLevel.HIGH
                 )

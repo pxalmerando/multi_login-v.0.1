@@ -1,20 +1,19 @@
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from typing import List, Optional
 import logging
+from typing import List, Optional
 
 
 from app.services.captcha_detection.models import CaptchaResult
 from app.services.captcha_detection.constants import ConfidenceLevel
 from app.services.captcha_detection.strategies.base import DetectionStrategy
-from app.services.captcha_detection.strategies.recaptcha import RecaptchaDetectionStrategy
+from app.services.captcha_detection.strategies.generic import GenericDetectionStrategy
 from app.services.captcha_detection.strategies.hcaptcha import HCaptchaDetectionStrategy
+from app.services.captcha_detection.strategies.bol_block import BolBlockDetectionStrategy
+from app.services.captcha_detection.strategies.recaptcha import RecaptchaDetectionStrategy
 from app.services.captcha_detection.strategies.cloudflare import CloudflareDetectionStrategy
 from app.services.captcha_detection.strategies.funcaptcha import FunCaptchaDetectionStrategy
-from app.services.captcha_detection.strategies.generic import GenericDetectionStrategy
 from app.services.captcha_detection.strategies.url_pattern import URLPatternDetectionStrategy
-from app.services.captcha_detection.strategies.title_pattern import TitlePatternDetectionStrategy
 from app.services.captcha_detection.strategies.text_pattern import TextPatternDetectionStrategy
+from app.services.captcha_detection.strategies.title_pattern import TitlePatternDetectionStrategy
 
 
 class CaptchaDetector:
@@ -25,6 +24,7 @@ class CaptchaDetector:
         self.strategies = strategies or self._get_default_strategies()
 
     def _get_default_strategies(self) -> List[DetectionStrategy]:
+        
         return [
             RecaptchaDetectionStrategy(self.driver),
             HCaptchaDetectionStrategy(self.driver),
@@ -34,6 +34,7 @@ class CaptchaDetector:
             URLPatternDetectionStrategy(self.driver),
             TitlePatternDetectionStrategy(self.driver),
             TextPatternDetectionStrategy(self.driver),
+            BolBlockDetectionStrategy(self.driver),
         ]
     def detect_captcha(self) -> CaptchaResult:
 

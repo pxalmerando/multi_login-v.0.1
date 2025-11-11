@@ -39,7 +39,7 @@ class DetectionStrategy(ABC):
         try:
             return detection_func()
         except Exception as e:
-            print(f"Error executing during {captcha_type} detection: {e}")
+            logging.error(f"Error executing during {captcha_type} detection: {e}")
             return CaptchaResult(detected=False)
     
 
