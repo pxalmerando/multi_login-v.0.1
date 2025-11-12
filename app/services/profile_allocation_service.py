@@ -86,7 +86,15 @@ class ProfileAllocationService:
             resp = await self.multi_login_service.profile_manager.create_profile(
                 folder_id=folder_id, name=f"Profile {idx}"
             )
-            pid = resp.get("data", {}).get("ids", [None])[0]
+            data = resp.get("data")
+            if data is None:
+                return None
+            if not isinstance(data, dict):
+                return None
+            ids = data.get("ids", [])
+            if not ids:
+                return None
+            pid = ids[0]
             if pid:
                 print(f"[ProfileAllocator] Created profile {pid}")
                 return pid

@@ -1,3 +1,4 @@
+"""WebSocket routes for URL processing with authentication."""
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.api.websocket.websocket_handlers import process_multiple_urls
 from app.core.config import SECRET_KEY, ALGORITHM
@@ -14,6 +15,15 @@ async def process_urls(
     websocket: WebSocket,
     token: str
 ):
+    """Process multiple URLs via WebSocket with JWT authentication.
+
+    Authenticates the user using the provided JWT token, then listens for URL lists
+    to process using the multi-login service and profile allocation.
+
+    Args:
+        websocket (WebSocket): The WebSocket connection for communication.
+        token (str): JWT token for user authentication.
+    """
     if token is None:
         raise Exception("No token provided")
     
@@ -79,6 +89,15 @@ async def process_single_url(
     websocket: WebSocket,
     token: str
 ):
+    """Process a single URL via WebSocket with JWT authentication.
+
+    Authenticates the user using the provided JWT token, then listens for single URLs
+    to process using the multi-login service and profile allocation with concurrency set to 1.
+
+    Args:
+        websocket (WebSocket): The WebSocket connection for communication.
+        token (str): JWT token for user authentication.
+    """
     if token is None:
         raise Exception("No token provided")
     

@@ -63,7 +63,6 @@ class MultiLoginService:
             if self._initialized:
                 return
             
-
             self._access_token = await self._get_tokens()
             self.folder_manager = FolderManager(self.base_url, self._access_token)
             self.profile_manager = ProfileManager(self.base_url, self._access_token)

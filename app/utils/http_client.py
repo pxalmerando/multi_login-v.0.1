@@ -1,5 +1,10 @@
 import httpx
+import logging
 from typing import Dict, Any
+from collections import defaultdict
+
+api_call_counts = defaultdict(int)
+
 class HttpClient:
     """
         A class used to make HTTP requests to a given base URL.
@@ -38,15 +43,19 @@ class HttpClient:
         url = self._full_url(endpoint)
 
         try:
-            
+            key = f"{method.upper()} {endpoint}"
+            api_call_counts[key] += 1
+            logging.info(f"[API CALL] {key} -> total {api_call_counts[key]}")
+
             response = await self.client.request(method, url, **kwargs)
             response.raise_for_status()
             return response.json()
-        except httpx.HTTPStatusError:
-            error_json = response.json()
-            print(f"Request failed with status code {response.status_code}: {error_json}")
-            return error_json
-
+        
+        except httpx.HTTPStatusError as e:
+            error_json = response.json() if response.content else {"error": str(e)}
+            logging.error(f"Request failed [{method.upper()} {endpoint}] {response.status_code}: {error_json}")
+            raise
+        
     async def get(self, endpoint: str, **kwargs) -> Dict[str, Any]:
         return await self._make_request('GET', endpoint, **kwargs)
     

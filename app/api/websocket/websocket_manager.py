@@ -1,9 +1,12 @@
+"""WebSocket connection management for handling multiple client connections."""
 from typing import Dict, Set, Optional
 from fastapi import WebSocket
 
 class WebSocketManager:
+    """Manages WebSocket connections for users, allowing connection, disconnection, and messaging."""
 
     def __init__(self):
+        """Initialize the WebSocket manager with an empty connections dictionary."""
         self.active_connections: Dict[str, Set[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, user_id: Optional[str]) -> None:
