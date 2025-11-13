@@ -1,7 +1,7 @@
 import random
 import asyncio
 import logging
-from typing import Dict, Optional, Any
+from typing import Dict, Optional
 
 from decouple import config
 
@@ -169,22 +169,6 @@ class MultiLoginService:
         except Exception as e:
             raise MultiLoginServiceError(f"Invalid response: {e}")
         
-    async def delete_profile(self, profile_id: str) -> None:
-
-        lock = self._get_profile_lock(profile_id)
-        async with lock:
-            try:
-                if self.profile_manager is None:
-                    raise MultiLoginServiceError("Service not initialized. Call initialize() first")
-                
-                await self.profile_manager.delete_profile(profile_id)
-                await self.profile_registry.unregister(profile_id)
-                logger.info(f"Profile {profile_id} deleted")
-
-            except Exception as e:
-                logger.exception(f"Failed to delete profile {profile_id}: {e}")
-                raise
-
     async def start_profile(self, profile_id: str) -> str:
         if not self._initialized:
             await self.initialize()
@@ -223,25 +207,54 @@ class MultiLoginService:
                 raise
 
     async def stop_profile(self, profile_id: str) -> None:
-
+        """Stop a running profile (does not delete it)"""
         if not self._initialized:
             await self.initialize()
 
         lock = self._get_profile_lock(profile_id)
         async with lock:
-
-            profile_running = await self.profile_registry.is_running(profile_id)
-            if not profile_running:
+            if not await self.profile_registry.is_running(profile_id):
                 logger.info(f"Profile {profile_id} is not running.")
                 return
             
-            endpoint = f"api/v1/profile/stop/p/{profile_id}"
+            await self._stop_profile_internal(profile_id)
 
+
+    async def delete_profile(self, profile_id: str) -> None:
+        """Delete a profile permanently (stops it first if running)"""
+        if not self._initialized:
+            await self.initialize()
+
+        lock = self._get_profile_lock(profile_id)
+        async with lock:
             try:
-                await self.http_launcher.get(endpoint=endpoint, headers=self.headers)
+                # Stop if running
+                if await self.profile_registry.is_running(profile_id):
+                    await self._stop_profile_internal(profile_id)
+                
+                # Always unregister and delete
                 await self.profile_registry.unregister(profile_id)
-                logger.info(f"Profile {profile_id} stopped")
+                await self.profile_manager.delete_profile(profile_id)
+                logger.info(f"Profile {profile_id} deleted")
 
             except Exception as e:
+                # Ensure cleanup even on failure
                 await self.profile_registry.unregister(profile_id)
-                logger.exception(f"Failed to stop profile {profile_id}: {e}")
+                logger.exception(f"Failed to delete profile {profile_id}: {e}")
+                raise
+
+    async def _stop_profile_internal(self, profile_id: str) -> None:
+        """
+        Internal helper: Stop a profile without locking.
+        Caller must hold the profile lock.
+        """
+        endpoint = f"api/v1/profile/stop/p/{profile_id}"
+        try:
+            await self.http_launcher.get(endpoint=endpoint, headers=self.headers)
+            await self.profile_registry.unregister(profile_id)
+            logger.info(f"Profile {profile_id} stopped")
+        except Exception as e:
+            # Unregister even on error to keep state consistent
+            await self.profile_registry.unregister(profile_id)
+            logger.exception(f"Failed to stop profile {profile_id}: {e}")
+            raise

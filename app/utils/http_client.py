@@ -2,6 +2,7 @@ import httpx
 import logging
 from typing import Dict, Any
 from collections import defaultdict
+import time
 
 api_call_counts = defaultdict(int)
 
@@ -42,16 +43,25 @@ class HttpClient:
 
         url = self._full_url(endpoint)
 
+        
+
+        start_time = time.perf_counter()
+
         try:
             key = f"{method.upper()} {endpoint}"
             api_call_counts[key] += 1
             logging.info(f"[API CALL] {key} -> total {api_call_counts[key]}")
-
+            
             response = await self.client.request(method, url, **kwargs)
+            duration = time.perf_counter() - start_time
+            logging.info(f"[API LATENCY] {method.upper()} {endpoint} took {duration:.4f}s")
+
             response.raise_for_status()
             return response.json()
         
         except httpx.HTTPStatusError as e:
+            duration = time.perf_counter() - start_time
+            logging.error(f"[API LATENCY] {method.upper()} {endpoint} failed after {duration:.4f}s")
             error_json = response.json() if response.content else {"error": str(e)}
             logging.error(f"Request failed [{method.upper()} {endpoint}] {response.status_code}: {error_json}")
             raise

@@ -5,6 +5,10 @@ from app.services.url_processing_service import URLProcessingService
 from app.services.profile_allocation_service import ProfileAllocationService
 from app.services.multi_login_service import MultiLoginService
 from app.adapters.websocket_notifier import WebSocketNotifier
+import logging
+
+logger = logging.getLogger(__name__)
+
 class BatchProcessingOrchestrator:
     def __init__(
             self,
@@ -52,6 +56,7 @@ class BatchProcessingOrchestrator:
         except Exception as e:
             await self.notifier.notify_error(f"Batch processing failed: {str(e)}")
             raise
+        
     async def _process_with_jit_allocation(
         self, 
         urls: List[str],
@@ -63,6 +68,7 @@ class BatchProcessingOrchestrator:
             profile_id = None
             async with semaphore:
                 try:
+
                     profile_id = await self.profile_allocator.acquire_profile(
                         folder_id=folder_id
                     )
@@ -71,7 +77,10 @@ class BatchProcessingOrchestrator:
                     
                     result = await self._process_single_with_profile(url, profile_id)
 
-                    if not result.captcha_detected:
+                    if not result.captcha_detected or not result.success:
+                        logger.warning(f"Deleting profile {profile_id} due to error/CAPTCHA")
+                        await self.profile_allocator.mark_profile_deleted(profile_id)
+                    else:
                         await self.profile_allocator.release_profile(profile_id)
 
                     return result
@@ -79,8 +88,14 @@ class BatchProcessingOrchestrator:
                     
                 except Exception as e:
 
+                    logger.exception(f"Error processing {url}: {e}")
+
                     if profile_id:
-                        await self.profile_allocator.release_profile(profile_id)
+                        try:
+                            await self.profile_allocator.mark_profile_deleted(profile_id)
+                        except Exception as e:
+                            logger.exception(f"Failed to cleanup profile {profile_id}: {e}")
+
                     return ProcessingResult(
                         success=False,
                         url=url,
@@ -112,14 +127,15 @@ class BatchProcessingOrchestrator:
         profile_id: str
     ) -> ProcessingResult:
         selenium_url = None
-        profile_should_be_deleted = False
         try:
             await self.notifier.notify_processing(
                 step=1,
                 message=f"Processing URL: {url}",
                 total_steps=3
             )
+
             selenium_url = await self.multi_login_service.start_profile(profile_id)
+            
             if selenium_url is None:
                 await self.profile_allocator.mark_profile_deleted(profile_id)
                 return ProcessingResult(
@@ -127,47 +143,34 @@ class BatchProcessingOrchestrator:
                     error_message="Failed to start profile",
                     url=url
                 )
-            await self.notifier.notify_processing(
-                message=f"Starting profile: {selenium_url}", step=2, total_steps=3
-            )
-            await self.notifier.notify_processing(
-                message=f"Connecting to browser: {selenium_url}", step=3, total_steps=3
-            )
+
+            await self.notifier.notify_processing(message=f"Starting profile: {selenium_url}", step=2, total_steps=3)
+
+            await self.notifier.notify_processing(message=f"Connecting to browser: {selenium_url}", step=3, total_steps=3)
+
             result = await self.url_processor.process_url(url=url, selenium_url=selenium_url)
+
             if result.captcha_detected:
                 await self.notifier.notify_error(f"CAPTCHA detected for URL: {url}")
-                profile_should_be_deleted = True
-                
-                try:
-                    await self.multi_login_service.stop_profile(profile_id)
-                except:
-                    pass
-                try:
-                    await self.multi_login_service.delete_profile(profile_id)
-                except:
-                    pass
-                
-                
-                await self.profile_allocator.mark_profile_deleted(profile_id)
-                return result
+                return ProcessingResult(success=False, url=url, captcha_detected=True, error_message="CAPTCHA detected !")
             
             if result.success:
                 await self.notifier.notify_completed(
                     message="URL processed successfully",
                     data=result.to_dict()
                 )
+
             return result
+        
         except Exception as e:
-            profile_should_be_deleted = True
-            try:
-                await self.multi_login_service.stop_profile(profile_id)
-            except:
-                pass
-            return ProcessingResult(success=False, url=url, error_message=str(e))
-        finally:
-            
-            if not profile_should_be_deleted:
-                await self.profile_allocator.release_profile(profile_id)
+            logger.exception(f"Error in _process_single_with_profile for {url}: {e}")
+            return ProcessingResult(
+                success=False, 
+                url=url, 
+                error_message=str(e)
+            )
+        
+
     def _create_batch_result(
             self,
             results: List[ProcessingResult]
