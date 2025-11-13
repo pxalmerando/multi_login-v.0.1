@@ -1,9 +1,16 @@
 """FastAPI application entry point."""
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.http import auth_routes
 from app.api.websocket import websocket_routes
 
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 app = FastAPI()
 

@@ -69,7 +69,7 @@ class MultiLoginService:
             self.headers = {"Authorization": f"Bearer {self._access_token}"}
 
             self._initialized = True
-            logger.info("MultiLoginService initialized with access token", self._access_token)
+            logger.info(f"MultiLoginService initialized with access token, {self._access_token}")
 
     async def _get_tokens(self) -> str:
 
@@ -124,7 +124,7 @@ class MultiLoginService:
             logger.debug("No profiles running")
             return
         
-        logger.info("Cleaning up %d running profiles...", len(sessions))
+        logger.info(f"Cleaning up running profiles... {len(sessions)}")
         failures = []
         for session in sessions:
             try:
@@ -139,7 +139,7 @@ class MultiLoginService:
         if failures:
             logger.info(f"Failed to stop profiles: {failures}")
         else:
-            logger.info("All profiles stopped successfully")
+            logger.info(f"All profiles stopped successfully")
     
     def _parse_profile_start_response(self, response: dict, profile_id: str) -> MultiLoginProfileSession:
 
