@@ -18,6 +18,7 @@ class ProfileAllocationService:
         self._deleted_profiles: Set[str] = set()
         self._in_use_profiles: Set[str] = set()
         self._profile_locks: dict[str, asyncio.Lock] = {}
+
     
     async def _get_validated_profile(self, folder_id) -> List[str]:
         if not self._profile_pool:
@@ -39,10 +40,6 @@ class ProfileAllocationService:
                 logger.info(f"[ProfileAllocator] Locks: {[(k, v.locked()) for k, v in self._profile_locks.items()]}")
                 return None
             
-            if asyncio.get_event_loop().time() - start > timeout:
-                print(f"[ProfileAllocator] Timeout waiting for profile")
-                return None
-            
             async with self._pool_lock:
                 valid_profiles = await self._get_validated_profile(folder_id)
                 valid_profiles = [p for p in valid_profiles if p not in self._deleted_profiles]
@@ -52,20 +49,23 @@ class ProfileAllocationService:
                     if p not in self._profile_locks:
                         self._profile_locks[p] = asyncio.Lock()
                 
-                available = [p for p in valid_profiles if p not in self._in_use_profiles]
-                
+                for pid in valid_profiles:
+                    if pid in self._in_use_profiles:
+                        continue
 
-                for pid in available:
                     lock = self._profile_locks[pid]
-                    if not lock.locked():
-                        await lock.acquire()
-                        self._in_use_profiles.add(pid)
-                        print(f"[ProfileAllocator] Reusing profile {pid}")
-                        return pid
-                
-
+                    try:
+                        if await asyncio.wait_for(lock.acquire(), timeout=.1):
+                            self._in_use_profiles.add(pid)
+                            logger.info(f"[ProfileAllocator] Acquired profile {pid}")
+                            return pid
+                    except asyncio.TimeoutError:
+                        continue
+                    except Exception as e:
+                        logger.exception(f"Error acquiring profile {e}")
+                    
                 if len(valid_profiles) < self.max_profiles:
-                    print(f"[ProfileAllocator] Creating new ML profile "
+                    logger.info(f"[ProfileAllocator] Creating new ML profile "
                           f"({len(valid_profiles)}/{self.max_profiles})")
                     new_pid = await self._create_single_profile(folder_id, len(valid_profiles))
 
@@ -74,9 +74,10 @@ class ProfileAllocationService:
                         self._profile_locks[new_pid] = asyncio.Lock()
                         await self._profile_locks[new_pid].acquire()
                         self._in_use_profiles.add(new_pid)
-                        print(f"[ProfileAllocator] Created new profile {new_pid}")
+                        logger.info(f"[ProfileAllocator] Created new profile {new_pid}")
                         return new_pid
-                    print("[ProfileAllocator] ML create profile failed, retrying...")
+                    logger.info("[ProfileAllocator] ML create profile failed, retrying...")
+                    
             await asyncio.sleep(0.4)
 
     async def release_profile(self, profile_id: str):
