@@ -4,6 +4,7 @@ from app.services.multi_login_service import MultiLoginService
 import logging
 
 logger = logging.getLogger(__name__)
+
 class ProfileAllocationService:
     """
     Allocates MultiLogin profiles safely in concurrent environments.
