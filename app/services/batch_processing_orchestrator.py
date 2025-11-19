@@ -77,9 +77,8 @@ class BatchProcessingOrchestrator:
                     
                     result = await self._process_single_with_profile(url, profile_id)
 
-                    if result.captcha_detected or not result.success:
+                    if not result.captcha_detected or not result.success:
                         logger.warning(f"Deleting profile {profile_id} due to error/CAPTCHA")
-
                         await self.profile_allocator.mark_profile_deleted(profile_id)
                     else:
                         await self.profile_allocator.release_profile(profile_id)
