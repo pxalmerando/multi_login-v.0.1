@@ -6,6 +6,8 @@ from fastapi import status
 from jose import jwt, JWTError
 from app.services.multi_login_service import MultiLoginService
 from app.services.profile_allocation_service import ProfileAllocationService
+from app.database.profile_repository import ProfileRepository
+from app.services.profile_state_manager import ProfileStateManager
 router = APIRouter(
     prefix="/ws",
     tags=["websocket"],
@@ -47,7 +49,9 @@ async def process_urls(
     })
     processor = MultiLoginService()
     await processor.initialize()
-    profile_allocator = ProfileAllocationService(multi_login_service=processor)
+    profile_repo = ProfileRepository(multi_login_service=processor)
+    profile_state = ProfileStateManager()
+    profile_allocator = ProfileAllocationService(repository=profile_repo, state_manager=profile_state)
     try:
         while True:
             data = await websocket.receive_json()
