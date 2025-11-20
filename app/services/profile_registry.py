@@ -1,6 +1,11 @@
 import asyncio
+import logging
 from typing import Dict, Optional, List
 from app.models.schemas.profile_models import MultiLoginProfileSession
+
+logger = logging.getLogger(__name__)
+
+
 class ProfileRegistry:
     def __init__(self):
         self._sessions: Dict[str, MultiLoginProfileSession] = {}
@@ -8,14 +13,14 @@ class ProfileRegistry:
     async def register(self, session: MultiLoginProfileSession) -> None:
         async with self._lock:
             if session.profile_id in self._sessions:
-                raise ValueError(f"Profile {session.profile_id} already registered")
+                raise ValueError(f"[ProfileRegistry] Profile {session.profile_id} already registered")
             self._sessions[session.profile_id] = session
-            print(f"Profile {session.profile_id} registered")
+            logger.info(f"[ProfileRegistry] Profile {session.profile_id} registered")
     async def unregister(self, profile_id: str) -> None:
         async with self._lock:
             if profile_id in self._sessions:
                     del self._sessions[profile_id]
-                    print(f"Profile {profile_id} unregistered")
+                    logger.info(f"[ProfileRegistry] Profile {profile_id} unregistered")
         
     async def get_session(self, profile_id: str) -> Optional[MultiLoginProfileSession]:
         async with self._lock:
