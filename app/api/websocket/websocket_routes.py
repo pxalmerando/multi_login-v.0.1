@@ -9,6 +9,7 @@ from app.services.multi_login_service import MultiLoginService
 from app.services.profile_allocation_service import ProfileAllocationService
 from app.database.profile_repository import ProfileRepository
 from app.services.profile_state_manager import ProfileStateManager
+from app.services.redis_profile_storage import RedisProfileStorage
 router = APIRouter(
     prefix="/ws",
     tags=["websocket"],
@@ -48,11 +49,13 @@ async def process_urls(
         "status": "connected",
         "message": f"Authenticated as {user['email']}"
     })
+    redis = RedisProfileStorage()
+    await redis.initialize()
     processor = MultiLoginService()
     await processor.initialize()
     profile_repo = ProfileRepository(multi_login_service=processor)
     in_memory = InMemoryProfileStorage()
-    profile_state = ProfileStateManager(in_memory)
+    profile_state = ProfileStateManager(redis)
     profile_allocator = ProfileAllocationService(repository=profile_repo, state_manager=profile_state)
     try:
         while True:

@@ -204,6 +204,12 @@ class MultiLoginService:
             
             except Exception as e:
                 logger.exception(f"Failed to start profile {profile_id}: {e}")
+                try:
+                    stop_endpoint = f"api/v1/profile/stop/p/{profile_id}"
+                    await self.http_launcher.get(endpoint=stop_endpoint, headers=self.headers, timeout=5.0)
+                    logger.info(f"Stopped profile {profile_id} after startup failure")
+                except Exception as stop_error:
+                    logger.warning(f"Failed to stop profile {profile_id} after startup failure: {stop_error}")
                 raise
 
     async def stop_profile(self, profile_id: str) -> None:
@@ -228,17 +234,17 @@ class MultiLoginService:
         lock = self._get_profile_lock(profile_id)
         async with lock:
             try:
-                # Stop if running
+                
                 if await self.profile_registry.is_running(profile_id):
                     await self._stop_profile_internal(profile_id)
                 
-                # Always unregister and delete
+                
                 await self.profile_registry.unregister(profile_id)
                 await self.profile_manager.delete_profile(profile_id)
-                logger.info(f"Profile {profile_id} deleted")
+                logger.info(f"Profile {profile_id} deleted and unregister")
 
             except Exception as e:
-                # Ensure cleanup even on failure
+                
                 await self.profile_registry.unregister(profile_id)
                 logger.exception(f"Failed to delete profile {profile_id}: {e}")
                 raise
@@ -254,7 +260,7 @@ class MultiLoginService:
             await self.profile_registry.unregister(profile_id)
             logger.info(f"Profile {profile_id} stopped")
         except Exception as e:
-            # Unregister even on error to keep state consistent
+            
             await self.profile_registry.unregister(profile_id)
             logger.exception(f"Failed to stop profile {profile_id}: {e}")
             raise

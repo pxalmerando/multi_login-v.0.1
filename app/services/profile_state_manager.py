@@ -22,7 +22,7 @@ class ProfileStateManager:
         Note: We removed the "cache dirty" concept because the storage
         layer is now the source of truth.
         """
-        return await self._storage.get_all_profiles()
+        return await self._storage.get_available_profiles()
     
     async def get_available_profiles(self) -> List[str]:
         """Get profiles that are not in use and not deleted."""
