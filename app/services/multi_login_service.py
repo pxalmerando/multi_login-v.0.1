@@ -5,14 +5,15 @@ from typing import Dict, Optional
 
 from decouple import config
 
+import redis.asyncio as redis
 from app.utils.http_client import HttpClient
 from app.services.multilogin.auth import UserAuth
 from app.core.config import BASE_URL, LAUNCHER_URL
 from app.services.profile_registry import ProfileRegistry
-from app.services.multilogin.token_manager import TokenManager
 from app.services.multilogin.folder_manager import FolderManager
 from app.services.multilogin.profile_manager import ProfileManager
 from app.models.schemas.profile_models import MultiLoginProfileSession
+from app.services.multilogin.redis_token_manager import RedisTokenManager
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ class MultiLoginService:
             self.headers = {"Authorization": f"Bearer {self._access_token}"}
 
             self._initialized = True
-            logger.info(f"MultiLoginService initialized with access token, {self._access_token}")
+            logger.info(f"[MultiLoginService] initialized with access token, {self._access_token}")
 
     async def _get_tokens(self) -> str:
 
@@ -81,7 +82,9 @@ class MultiLoginService:
                 http_client=self.http_client
             )       
             
-            token_manager = TokenManager(user_auth)
+            # token_manager = TokenManager(user_auth)
+            redis_client = redis.from_url(url="redis://127.0.0.1:6379", decode_responses=True)
+            token_manager = RedisTokenManager(user_auth=user_auth, redis_client=redis_client)
             results = await token_manager.get_tokens()
             access_token = results.get("access_token")
             if not access_token:
