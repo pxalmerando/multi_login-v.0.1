@@ -1,5 +1,5 @@
 import logging
-from .auth import UserAuth
+from .auth_service import UserAuth
 from typing import Optional
 import redis.asyncio as redis
 from .token_service import TokenService
@@ -28,9 +28,3 @@ class RedisTokenManager:
     async def save(self, tokens: dict) -> None:
 
         return await self.service.repository.save(tokens)
-
-
-
-
-
-    

@@ -1,5 +1,5 @@
 import json, os
-from .auth import UserAuth
+from .auth_service import UserAuth
 class TokenManager:
     """
         Class to manage authentication tokens.

@@ -1,4 +1,11 @@
+from typing import Optional
 from app.services.multilogin.base_manager import BaseManagerApi
+import logging
+import random
+
+logger = logging.getLogger(__name__)
+
+
 class FolderManager(BaseManagerApi):
     """
         A class used to interact with the API endpoints related to folders.
@@ -17,7 +24,59 @@ class FolderManager(BaseManagerApi):
                 api_token (str): The authentication token for the API.
         """
         super().__init__(api_url, api_token)
+        self._folder_id_cache: Optional[str] = None
+
+    async def get_or_create_default_folder(self, folder_name: Optional[str] = None) -> str:
+        """
+        Get existing folder or create a new one.
+        Results are cached to avoid repeated API calls.
+        
+        Args:
+            folder_name (str, optional): Name for new folder if creation is needed.
+                                        Defaults to a random folder name.
+        
+        Returns:
+            str: The folder ID
+            
+        Raises:
+            ValueError: If folder creation fails or returns invalid data
+        """
+        
+        if self._folder_id_cache is not None:
+            logger.debug(f"[FolderManager] Using cached folder ID: {self._folder_id_cache}")
+            return self._folder_id_cache
+        
+        try:
+            
+            folder_ids = await self.get_folder_ids()
+            if folder_ids:
+                self._folder_id_cache = folder_ids[0]
+                logger.info(f"[FolderManager] Using existing folder: {self._folder_id_cache}")
+                return self._folder_id_cache
+            
+            
+            folder_name = folder_name or f"Folder {random.randint(1, 100)}"
+            new_folder = await self.create_folder(folder_name)
+            
+            data = new_folder.get('data', {})
+            folder_id = data.get('id')
+            
+            if not folder_id:
+                raise ValueError(f"[FolderManager] Failed to get folder ID from create response")
+            
+            self._folder_id_cache = folder_id
+            logger.info(f"[FolderManager] Created new folder '{folder_name}': {folder_id}")
+            return folder_id
+            
+        except Exception as e:
+            logger.exception(f"[FolderManager] Failed to get or create folder: {e}")
+            raise
     
+    def clear_cache(self) -> None:
+        """Clear the cached folder ID"""
+        self._folder_id_cache = None
+        logger.debug(f"[FolderManager] Folder ID cache cleared")
+
     async def create_folder(self, folder_name: str, comment: str = None):
         """
             Create a new folder in the workspace.
@@ -50,7 +109,7 @@ class FolderManager(BaseManagerApi):
             folders = [folder.get('name') for folder in list_response.get('data', {}).get('folders', [])]
             return folders
         except ValueError as e:
-            print(f"Error retrieving folder names: {e}")
+            logger.exception(f"[FolderManager] Error retrieving folder names: {e}")
             return []
     
     async def get_folder_ids(self) -> list:
@@ -59,7 +118,7 @@ class FolderManager(BaseManagerApi):
             folders = [folder.get('folder_id') for folder in list_response.get('data', {}).get('folders', [])]
             return folders
         except ValueError as e:
-            print(f"Error retrieving folder IDs: {e}")
+            logger.exception(f"[FolderManager] Error retrieving folder IDs: {e}")
             return []
     async def update_folder(self, folder_id: str, new_folder_name: str, comment: str = None):
         """

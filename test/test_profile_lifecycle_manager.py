@@ -4,7 +4,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, Mock
 
-from app.services.profile_life_cycle_manager import ProfileLifecycleManager
+from app.services.profile_lifecycle_manager import ProfileLifecycleManager
 
 class TestProfileLifecycleManager:
     """Test ProfileLifecycleManager - decides when to reuse vs delete profiles"""

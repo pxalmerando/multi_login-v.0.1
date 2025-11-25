@@ -7,7 +7,7 @@ from app.services.url_processing_service import URLProcessingService
 from app.services.batch_progress_notifier import BatchProgressNotifier
 from app.services.concurrent_task_executor import ConcurrentTaskExecutor
 from app.services.batch_result_aggregator import BatchResultAggregator
-from app.services.profile_life_cycle_manager import ProfileLifecycleManager
+from app.services.profile_lifecycle_manager import ProfileLifecycleManager
 from app.services.profile_allocation_service import ProfileAllocationService
 from app.models.schemas.processing_results import ProcessingResult, BatchProcessingResult
 

@@ -3,7 +3,7 @@ from typing import Optional
 
 from .token_repository import TokenRepository
 from .token_validator import TokenValidator
-from .auth import UserAuth
+from .auth_service import UserAuth
 
 logger = logging.getLogger(__name__)
 
