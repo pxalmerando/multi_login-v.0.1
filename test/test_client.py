@@ -70,13 +70,13 @@ class TestClientAuthentication:
         client.ensure_authenticated()
         client.ensure_authenticated()
         
-        # Each call should trigger get_tokens
+        
         assert mock_token_manager.get_tokens.call_count == 3
     
     def test_ensure_authenticated_with_none_response(self, client, mock_token_manager):
         """Test behavior when token manager returns None"""
         mock_token_manager.get_tokens.return_value = None
         
-        # Should complete without error
+        
         client.ensure_authenticated()
         mock_token_manager.get_tokens.assert_called_once()

@@ -1,10 +1,10 @@
 import pytest
-from src.http_client import HttpClient
+from app.utils.http_client import HttpClient
 from unittest.mock import Mock, patch
 import requests
 
 class TestHttpClientInitialization:
-    """Test HttpClient initialization and properties."""
+    """Test HttpClient  initialization and properties."""
     
     def test_client_stores_base_url_and_timeout(self):
         client = HttpClient("https://example.com")
