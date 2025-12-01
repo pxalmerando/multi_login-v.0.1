@@ -7,7 +7,7 @@ from app.services.profile_allocation_service import ProfileAllocationService
 async def process_multiple_urls(
     websocket: WebSocket,
     urls: list[str],
-    processor: MultiLoginService,
+    multi_login_service: MultiLoginService,
     profile_allocator: ProfileAllocationService,
     max_concurrency: int = 3
 ):
@@ -16,7 +16,7 @@ async def process_multiple_urls(
     Args:
         websocket (WebSocket): The WebSocket connection for sending status updates.
         urls (list[str]): List of URLs to process.
-        processor (MultiLoginService): Service for handling multi-login operations.
+        multi_login_service (MultiLoginService): Service for handling multi-login operations.
         profile_allocator (ProfileAllocationService): Service for allocating browser profiles.
         max_concurrency (int): Maximum number of concurrent processing tasks. Defaults to 3.
     """
@@ -25,7 +25,7 @@ async def process_multiple_urls(
     )
     
     orchestrator = BatchProcessingOrchestrator(
-        multi_login_service=processor,
+        multi_login_service=multi_login_service,
         notifier=notifier,
         max_concurrency=max_concurrency,
         profile_allocator=profile_allocator

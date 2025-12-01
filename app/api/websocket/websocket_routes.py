@@ -4,7 +4,6 @@ from app.api.websocket.websocket_handlers import process_multiple_urls
 from app.core.config import SECRET_KEY, ALGORITHM
 from fastapi import status
 from jose import jwt, JWTError
-from app.services.in_memory_profile_storage import InMemoryProfileStorage
 from app.services.multi_login_service import MultiLoginService
 from app.services.profile_allocation_service import ProfileAllocationService
 from app.database.profile_repository import ProfileRepository
@@ -54,7 +53,6 @@ async def process_urls(
     processor = MultiLoginService()
     await processor.initialize()
     profile_repo = ProfileRepository(multi_login_service=processor)
-    in_memory = InMemoryProfileStorage()
     profile_state = ProfileStateManager(redis)
     profile_allocator = ProfileAllocationService(repository=profile_repo, state_manager=profile_state)
     try:

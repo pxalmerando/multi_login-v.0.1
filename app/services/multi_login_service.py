@@ -102,12 +102,15 @@ class MultiLoginService:
         Returns:
             Selenium URL for the started profile
         """
-        if not self._initialized:
-            await self.initialize()
+        if not profile_id or not profile_id.strip():
+            raise ValueError(f"[MultiLoginService] profile_id must not be empty")
         
         if folder_id is None:
-            folder_id = await self.get_folder_id()
+            raise ValueError(f"[MultiLoginService] Folder ID is None")
         
+        if not self._initialized:
+            await self.initialize()
+
         return await self.profile_operations.start_profile(
             profile_id, folder_id, self.headers
         )

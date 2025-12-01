@@ -3,7 +3,6 @@ import logging
 from typing import Optional
 
 from app.database.profile_repository import ProfileRepository
-from app.services.in_memory_profile_storage import InMemoryProfileStorage
 from app.services.profile_state_manager import ProfileStateManager
 
 logger = logging.getLogger(__name__)

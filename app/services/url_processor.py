@@ -24,7 +24,8 @@ class URLProcessor:
     async def process_with_profile(
         self,
         url: str,
-        profile_id: str
+        profile_id: str,
+        folder_id: str
     ) -> ProcessingResult:
         """
         Process a URL using the given profile.
@@ -34,7 +35,7 @@ class URLProcessor:
         
         try:
             
-            selenium_url = await self.multi_login.start_profile(profile_id)
+            selenium_url = await self.multi_login.start_profile(profile_id, folder_id)
             
             if selenium_url is None:
                 logger.error(f"[URLProcessor] Failed to start profile {profile_id}")
