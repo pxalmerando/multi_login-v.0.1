@@ -48,13 +48,15 @@ async def process_urls(
         "status": "connected",
         "message": f"Authenticated as {user['email']}"
     })
+    
     redis = RedisProfileStorage()
     await redis.initialize()
-    processor = MultiLoginService()
-    await processor.initialize()
-    profile_repo = ProfileRepository(multi_login_service=processor)
+    multi_login_service = MultiLoginService()
+    await multi_login_service.initialize()
+    profile_repo = ProfileRepository(multi_login_service=multi_login_service)
     profile_state = ProfileStateManager(redis)
     profile_allocator = ProfileAllocationService(repository=profile_repo, state_manager=profile_state)
+
     try:
         while True:
             data = await websocket.receive_json()
@@ -78,18 +80,18 @@ async def process_urls(
             await process_multiple_urls(
                 websocket=websocket,
                 urls=valid_urls,
-                processor=processor,
+                multi_login_service=multi_login_service,
                 profile_allocator=profile_allocator,
             )
     except WebSocketDisconnect:
         print(f"WebSocket disconnected: {user['email']}")
-        await processor.cleanup()
+        await multi_login_service.cleanup()
     except Exception as e:
         await websocket.send_json({
             "status": "error",
             "message": f"Unexpected server error: {str(e)}"
         })
-        await processor.cleanup()
+        await multi_login_service.cleanup()
 
 @router.websocket("/process_url")
 async def process_single_url(
