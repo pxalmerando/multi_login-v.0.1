@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 import redis.asyncio as redis
 
 from app.services.redis_key_manager import RedisKeyManager
@@ -20,9 +20,17 @@ class RedisProfileStorage:
         self.reporter = RedisProfileStatusReporter(self.client, self.key_manager)
 
     async def initialize(self):
-        await self.client.ping()
+        await self.client.ping() # type: ignore
         await self.script_manager.register_scripts()
         logger.info("[RedisStorage] Initialized.")
+    
+    async def close(self) -> None:
+        logger.info(f"[RedisProfileStorage] Close Redis")
+        await self.client.close()
+
+    async def flush(self) -> None:
+        logger.info(f"[RedisProfileStorage] Flush redis")
+        await self.client.flushdb()
 
     async def try_acquire_profile(self, profile_id: str) -> bool:
         return await self.operations.try_acquire_profile(profile_id=profile_id)
@@ -36,7 +44,7 @@ class RedisProfileStorage:
     async def add_profile(self, profile_id) -> bool:
         return await self.operations.add_profile(profile_id=profile_id)
     
-    async def replace_all_profiles(self, profiles: List[str]) -> None:
+    async def replace_all_profiles(self, profiles: List[str]) -> int:
         return await self.operations.replace_all_profiles(profiles=profiles)
     
     async def get_available_profiles(self) -> List[str]:
@@ -44,3 +52,11 @@ class RedisProfileStorage:
     
     async def get_status(self) -> dict:
         return await self.reporter.get_status()
+    
+    async def get_pool_count(self) -> int:
+        """Get total count of profiles in pool"""
+        return await self.reporter.get_pool_count()
+
+    async def add_profile_if_under_limit(self, profile_id: str, max_limit: int) -> bool:
+        """Add profile only if under limit (atomic check-and-add)."""
+        return await self.operations.add_profile_if_under_limit(profile_id, max_limit)

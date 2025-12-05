@@ -102,6 +102,18 @@ class RedisScriptManager:
             """
         )
 
+        self._scripts['add_if_under_limit'] = await self.client.script_load(
+            """
+                local pool, deleted, profile_id, max_limit = KEYS[1], KEYS[2], ARGV[1], tonumber(ARGV[2])
+                local current_count = redis.call('SCARD', pool)
+                if current_count >= max_limit then
+                    return 0
+                end
+                redis.call('SADD', pool, profile_id)
+                return 1
+            """
+        )
+
         logger.info(f"[ScriptManager] Registered {len(self._scripts)} scripts")
 
     def get_script_sha(self, script_name: str) -> str:
@@ -111,4 +123,4 @@ class RedisScriptManager:
     async def execute_script(self, script_name: str, num_keys: int, *args):
         """Execute a registered script by name"""
         sha = self.get_script_sha(script_name)
-        return await self.client.evalsha(sha, num_keys, *args)
+        return await self.client.evalsha(sha, num_keys, *args) # type: ignore

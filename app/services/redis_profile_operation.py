@@ -1,6 +1,6 @@
 
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from app.services.redis_key_manager import RedisKeyManager
 from app.services.redis_script_manager import RedisScriptManager
 import logging
@@ -93,7 +93,18 @@ class RedisProfileOperations:
         if result == 1:
             logger.info(f"Added profile: {profile_id}")
         return result == 1
-    
+    async def add_profile_if_under_limit(self, profile_id: str, max_limit: int) -> bool:
+        """Atomically add profile only if total count is under limit."""
+        result = await self.scripts.execute_script(
+            'add_if_under_limit', 
+            2,  # num_keys = 2 (pool_key, deleted_key)
+            self.keys.pool_key, 
+            self.keys.deleted_key,
+            profile_id, 
+            str(max_limit)  # Convert to string for Redis
+        )
+        return bool(result)
+        
     async def replace_all_profiles(self, profiles: List[str]) -> int:
         """
         Replace entire profile pool with new list.
@@ -117,3 +128,5 @@ class RedisProfileOperations:
 
         logger.info(f"Replaced profiles, added {result} profiles")
         return int(result)
+    
+    

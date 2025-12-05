@@ -5,11 +5,6 @@ from app.services.redis_key_manager import RedisKeyManager
 
 
 class RedisProfileStatusReporter:
-    """
-    Single Responsibility: Query and report on profile pool status
-    
-    This class doesn't modify data, only reads and formats it.
-    """
     
     def __init__(self, client: redis.Redis, key_manager: RedisKeyManager):
         self.client = client
@@ -17,24 +12,28 @@ class RedisProfileStatusReporter:
 
     async def get_available_profiles(self) -> List[str]:
         """Get list of profiles that are available (not in use, not deleted)"""
-        members = await self.client.sdiff(
+        members = await self.client.sdiff([
             self.keys.pool_key,
             self.keys.in_use_key,
             self.keys.deleted_key
-        )
+        ]) # type: ignore
         return list(members)
+    
+    async def get_pool_count(self) -> int:
+        """Get total count of profiles in the pool (single Redis call)"""
+        return await self.client.scard(self.keys.pool_key) # type: ignore
     
     async def get_status(self) -> Dict:
         """Get comprehensive status of the profile pool"""
         async with self.client.pipeline(transaction=False) as pipe:
-            await pipe.scard(self.keys.pool_key)
-            await pipe.scard(self.keys.in_use_key)
-            await pipe.scard(self.keys.deleted_key)
-            await pipe.sdiff(
+            pipe.scard(self.keys.pool_key)
+            pipe.scard(self.keys.in_use_key)
+            pipe.scard(self.keys.deleted_key)
+            pipe.sdiff([
                 self.keys.pool_key,
                 self.keys.in_use_key,
                 self.keys.deleted_key
-            )
+            ])
             total, in_use, deleted, available = await pipe.execute()
         
         return {
@@ -43,13 +42,6 @@ class RedisProfileStatusReporter:
             "deleted": deleted,
             "available": len(available),
         }
-    
-    async def get_utilization_percentage(self) -> float:
-        """Calculate what percentage of profiles are in use"""
-        status = await self.get_status()
-        if status["total_profiles"] == 0:
-            return 0.0
-        return (status["in_use"] / status["total_profiles"]) * 100
     
     async def is_pool_exhausted(self) -> bool:
         """Check if all profiles are in use or deleted"""
