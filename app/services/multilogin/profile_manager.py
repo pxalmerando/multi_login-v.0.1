@@ -1,5 +1,8 @@
 from typing import Dict, Any, List, Optional
 from .base_manager import BaseManagerApi
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ProfileManager(BaseManagerApi):
     """Manager for creating, listing, updating and deleting profiles.
@@ -31,7 +34,8 @@ class ProfileManager(BaseManagerApi):
             api_token: API token used for authenticated requests.
         """
         super().__init__(api_url, api_token)
-    async def _get_profile_field(self, folder_id: str, field_name: str):
+    
+    async def _get_profile_field(self, folder_id: str, field_name: str) -> List[str]:
         """Helper to get a specific field from a profile by id.
 
         Args:
@@ -51,8 +55,9 @@ class ProfileManager(BaseManagerApi):
             profiles = response.get('data', {}).get('profiles', [])
             return [profile.get(field_name, '') for profile in profiles]
         except Exception as e:
-            print(f"Failed to get field '{field_name}' for folder {folder_id}: {e}")
+            logger.exception(f"Failed to get field '{field_name}' for folder {folder_id}: {e}")
             return []
+    
     def _build_profile_payload(
         self,
         name: str,
@@ -170,6 +175,7 @@ class ProfileManager(BaseManagerApi):
             include_full_parameters=True,
         )
         return await self.request('POST', 'profile/create', include_auth=True, json=payload)
+    
     async def list_profiles(
         self, 
         folder_id: str, 
@@ -180,6 +186,7 @@ class ProfileManager(BaseManagerApi):
         storage_type: str = DEFAULT_STORAGE_TYPE, 
         order_by: str = DEFAULT_ORDER_BY, 
         sort: str = DEFAULT_SORT
+
     ) -> Dict[str, Any]:
         """Return a list of profiles for a given folder.
 
@@ -212,7 +219,7 @@ class ProfileManager(BaseManagerApi):
         }
         return await self.request('POST', 'profile/search', include_auth=True, json=payload)
     
-    def get_profile_names(self, folder_id: str) -> List[str]:
+    async def get_profile_names(self, folder_id: str) -> List[str]:
         """Return a list of profile names for the given folder.
 
         Args:
@@ -222,7 +229,8 @@ class ProfileManager(BaseManagerApi):
             A list of profile name strings. If an error occurs an empty list is
             returned. Raises ValueError if folder_id is falsy.
         """
-        return self._get_profile_field(folder_id, 'name')
+        return await self._get_profile_field(folder_id, 'name')
+    
     async def get_profile_ids(self, folder_id: str) -> List[str]:
         """Return a list of profile IDs for the given folder.
 
@@ -234,6 +242,7 @@ class ProfileManager(BaseManagerApi):
             returned. Raises ValueError if folder_id is falsy.
         """
         return await self._get_profile_field(folder_id, 'id')
+    
     async def update_profile(
         self,
         profile_id: str,
@@ -270,6 +279,7 @@ class ProfileManager(BaseManagerApi):
             include_full_parameters=True,
         )
         return await self.request("POST", "profile/update", include_auth=True, json=payload)
+    
     async def delete_profile(
         self, 
         profile_id: str, 
@@ -293,6 +303,6 @@ class ProfileManager(BaseManagerApi):
             }
             return await self.request('POST', 'profile/remove', include_auth=True, json=payload)
         except Exception as e:
-            print(f"Failed to delete profile {profile_id}: {e}")
+            logger.exception(f"Failed to delete profile {profile_id}: {e}")
             return {}
         

@@ -20,27 +20,6 @@ class RedisScriptManager:
 
         """Load all Lua scripts into Redis and cache their SHAs"""
         
-        self._scripts['acquire'] = await self.client.script_load(
-            """
-                local pool, in_use, deleted, profile_id = KEYS[1], KEYS[2], KEYS[3], ARGV[1]
-
-                if redis.call('SISMEMBER', pool, profile_id) == 0 then 
-                    return 0 
-                end
-
-                if redis.call('SISMEMBER', deleted, profile_id) == 1 then 
-                    return 0 
-                end
-                
-                if redis.call('SISMEMBER', in_use, profile_id) == 1 then 
-                    return 0 
-                end
-
-                redis.call('SADD', in_use, profile_id)
-                return 1
-            """
-        )
-
         self._scripts['release'] = await self.client.script_load(
             """
                 if redis.call('SISMEMBER', KEYS[1], ARGV[1]) == 0 then
@@ -65,23 +44,6 @@ class RedisScriptManager:
             """
         )
 
-        self._scripts['add'] = await self.client.script_load(
-            """
-                local pool, deleted, profile_id = KEYS[1], KEYS[2], ARGV[1]
-                
-                if redis.call('SISMEMBER', pool, profile_id) == 1 then
-                    return 0
-                end
-
-                if redis.call('SISMEMBER', deleted, profile_id) == 1 then
-                    return 0
-                end
-
-                redis.call('SADD', pool, profile_id)
-                return 1
-            """
-        )
-
         self._scripts['replace'] = await self.client.script_load(
             """
                 local pool, deleted = KEYS[1], KEYS[2]
@@ -102,6 +64,48 @@ class RedisScriptManager:
             """
         )
 
+        self._scripts['add_if_under_limit'] = await self.client.script_load(
+            """
+                local pool, deleted, profile_id, max_limit = KEYS[1], KEYS[2], ARGV[1], tonumber(ARGV[2])
+
+                if redis.call('SISMEMBER', pool, profile_id) == 1 then
+                    return 0
+                end
+
+                if redis.call('SISMEMBER', deleted, profile_id) == 1 then
+                    return 0
+                end
+
+                local current_count = redis.call('SCARD', pool)
+
+                if current_count >= max_limit then
+                    return 0
+                end
+
+                redis.call('SADD', pool, profile_id)
+                
+                return 1
+            """
+        )
+
+        self._scripts["acquire_any_available"] = await self.client.script_load(
+            """
+                local pool, in_use, deleted = KEYS[1], KEYS[2], KEYS[3]
+
+                local available = redis.call("SDIFF", pool, in_use, deleted)
+
+                if #available == 0 then
+                    return nil
+                end
+
+                local profile_id = available[1]
+
+                redis.call("SADD", in_use, profile_id)
+
+                return profile_id
+            """
+        )
+
         logger.info(f"[ScriptManager] Registered {len(self._scripts)} scripts")
 
     def get_script_sha(self, script_name: str) -> str:
@@ -111,4 +115,4 @@ class RedisScriptManager:
     async def execute_script(self, script_name: str, num_keys: int, *args):
         """Execute a registered script by name"""
         sha = self.get_script_sha(script_name)
-        return await self.client.evalsha(sha, num_keys, *args)
+        return await self.client.evalsha(sha, num_keys, *args) # type: ignore

@@ -4,6 +4,7 @@ from typing import Dict, Any
 from collections import defaultdict
 import time
 
+logger = logging.getLogger(__name__)
 api_call_counts = defaultdict(int)
 
 class HttpClient:
@@ -23,7 +24,7 @@ class HttpClient:
 
     def __init__(self, base_url: str):
         self.base_url = base_url
-        self.client = httpx.AsyncClient()
+        self.client = httpx.AsyncClient(timeout=httpx.Timeout(10.0))
 
     def _full_url(self, endpoint: str) -> str:
         return f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
@@ -50,20 +51,20 @@ class HttpClient:
         try:
             key = f"{method.upper()} {endpoint}"
             api_call_counts[key] += 1
-            logging.info(f"[API CALL] {key} -> total {api_call_counts[key]}")
+            logger.info(f"[API CALL] {key} -> total {api_call_counts[key]}")
             
             response = await self.client.request(method, url, **kwargs)
             duration = time.perf_counter() - start_time
-            logging.info(f"[API LATENCY] {method.upper()} {endpoint} took {duration:.4f}s")
+            logger.info(f"[API LATENCY] {method.upper()} {endpoint} took {duration:.4f}s")
 
             response.raise_for_status()
             return response.json()
         
         except httpx.HTTPStatusError as e:
             duration = time.perf_counter() - start_time
-            logging.error(f"[API LATENCY] {method.upper()} {endpoint} failed after {duration:.4f}s")
+            logger.error(f"[API LATENCY] {method.upper()} {endpoint} failed after {duration:.4f}s")
             error_json = response.json() if response.content else {"error": str(e)}
-            logging.error(f"Request failed [{method.upper()} {endpoint}] {response.status_code}: {error_json}")
+            logger.error(f"Request failed [{method.upper()} {endpoint}] {response.status_code}: {error_json}")
             raise
         
     async def get(self, endpoint: str, **kwargs) -> Dict[str, Any]:

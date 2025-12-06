@@ -20,6 +20,14 @@ class RedisKeyManager:
         """Key for deleted/blacklisted profiles"""
         return f"{self.prefix}:deleted"
     
+    @property
+    def fetch_lock_key(self) -> str:
+        return f"{self.prefix}:fetch_lock"
+    
+    @property
+    def cache_ready_key(self) -> str:
+        return f"{self.prefix}:cache_ready"
+    
     def get_all_keys(self) -> tuple[str, str, str]:
         """Get all keys as a tuple (pool, in_use, deleted)"""
         return (self.pool_key, self.in_use_key, self.deleted_key)

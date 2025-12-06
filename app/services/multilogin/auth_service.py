@@ -88,6 +88,7 @@ class UserAuth:
             "refresh_token": self.refresh_token,
             "token_expiration": self.token_expiration
         }
+    
     def is_expired(self) -> bool:
         """
             Check if the token has expired.

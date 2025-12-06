@@ -126,7 +126,7 @@ class BatchProcessingOrchestrator:
             )
             
             
-            result = await self.url_processor.process_with_profile(url, profile_id)
+            result = await self.url_processor.process_with_profile(url, profile_id, folder_id)
             
             
             if result.captcha_detected or not result.success:

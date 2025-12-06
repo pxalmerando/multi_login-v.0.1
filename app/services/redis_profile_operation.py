@@ -1,6 +1,7 @@
 
 
-from typing import List, Optional
+import asyncio
+from typing import List, Optional, Tuple
 from app.services.redis_key_manager import RedisKeyManager
 from app.services.redis_script_manager import RedisScriptManager
 import logging
@@ -16,23 +17,6 @@ class RedisProfileOperations:
         
         self.scripts = script_manager
         self.keys = key_manager
-
-    async def try_acquire_profile(self, profile_id: str) -> bool:
-        result = await self.scripts.execute_script(
-            'acquire',
-            3, 
-            self.keys.pool_key,
-            self.keys.in_use_key,
-            self.keys.deleted_key,
-            profile_id
-        )
-
-        if result == 1:
-            logger.info(f"Acquired profile: {profile_id}")
-        else:
-            logger.warning(f"Failed to acquire profile: {profile_id}")
-
-        return result == 1
 
     async def release_profile(self, profile_id: str) -> bool:
         """
@@ -74,26 +58,25 @@ class RedisProfileOperations:
         
         return result == 1
     
-    async def add_profile(self, profile_id: str) -> bool:
-        """
-        Add a new profile to the pool.
-        
-        Returns:
-            True if added, False if already exists or is deleted
-        """
-
-        result = await self.scripts.execute_script(
-            'add',
-            2,
-            self.keys.pool_key,
-            self.keys.deleted_key,
-            profile_id
-        )
-
-        if result == 1:
-            logger.info(f"Added profile: {profile_id}")
-        return result == 1
-    
+    async def add_profile_if_under_limit(self, profile_id: str, max_limit: int) -> bool:
+        """Atomically add profile only if total count is under limit."""
+        try:
+            async with asyncio.timeout(2):
+                result = await self.scripts.execute_script(
+                'add_if_under_limit', 
+                2,  
+                self.keys.pool_key, 
+                self.keys.deleted_key,
+                profile_id, 
+                str(max_limit)  
+            )
+            if result == 1:
+                logger.info(f"Added profile: {profile_id}")
+            return result == 1
+        except asyncio.TimeoutError:
+            logger.error("add_profile_if_under_limit timed out")
+            return False
+            
     async def replace_all_profiles(self, profiles: List[str]) -> int:
         """
         Replace entire profile pool with new list.
@@ -117,3 +100,16 @@ class RedisProfileOperations:
 
         logger.info(f"Replaced profiles, added {result} profiles")
         return int(result)
+    
+    async def acquire_any_available(self) -> Optional[str]:
+
+        result = await self.scripts.execute_script(
+            "acquire_any_available",
+            3,
+            self.keys.pool_key,
+            self.keys.in_use_key,
+            self.keys.deleted_key
+        )
+
+        return result
+
