@@ -4,7 +4,8 @@ import time
 from typing import Optional
 
 from app.database.profile_repository import ProfileRepository
-from app.services.profile_state_manager import ProfileStateManager
+from app.services.profile_storage_protocol import ProfileStorageProtocol
+from app.services.redis_profile_storage import RedisProfileStorage
 
 logger = logging.getLogger(__name__)
 
@@ -18,40 +19,40 @@ class ProfileAllocationService:
     def __init__(
         self, 
         repository: ProfileRepository,
-        state_manager: ProfileStateManager,
+        storage: RedisProfileStorage,
         max_profiles: int = 10
     ):
         self.repository = repository
-        self.state = state_manager
+        self.storage = storage
         self.max_profiles = max_profiles
         self._cache_refresh_lock = asyncio.Lock()
         self._profile_creation_lock = asyncio.Lock()
         
-        # New: Track if initial fetch has been performed
-        self._cache_profiles: list | None = None
+        
+        self._cache_profiles: Optional[list] = None
         self._initial_fetch_done: bool = False
         self._initial_fetch_lock = asyncio.Lock()
 
-    async def _ensure_initial_fetch(self, folder_id: str) -> list | None:
+    async def _ensure_initial_fetch(self, folder_id: str) -> Optional[list[str]]:
         """
         Ensure fetch_all_profiles is called only once across all workers.
         Subsequent calls return cached result.
         
         Uses double-check locking pattern for thread safety.
         """
-        # Fast path: already fetched
+        
         if self._initial_fetch_done:
             logger.debug("Using cached profiles (already fetched)")
             return self._cache_profiles
         
         async with self._initial_fetch_lock:
-            # Double-check after acquiring lock
+            
             if self._initial_fetch_done:
                 logger.debug("Using cached profiles (fetched by another worker)")
                 return self._cache_profiles
-            
             logger.info("Performing initial fetch of all profiles (first call)")
             self._cache_profiles = await self.repository.fetch_all_profiles(folder_id)
+            logger.info(f"[ProfileAllocationService] Cached Profiles {self._cache_profiles}")
             self._initial_fetch_done = True
             
             profile_count = len(self._cache_profiles) if self._cache_profiles else 0
@@ -68,7 +69,7 @@ class ProfileAllocationService:
         """
         return self._initial_fetch_done
 
-    def get_cached_profiles(self) -> list | None:
+    def get_cached_profiles(self) -> Optional[list]:
         """
         Get the cached profiles without triggering a fetch.
         
@@ -95,30 +96,33 @@ class ProfileAllocationService:
             elapsed = time.monotonic() - start
             
             if elapsed > timeout:
-                status = await self.state.get_status()
+                status = await self.storage.get_status()
                 logger.warning(f"TIMEOUT after {elapsed:.1f}s. Status: {status}")
                 return None
             
-            # Refresh cache if empty - uses cached result if already fetched
             async with self._cache_refresh_lock:
-                available = await self.state.get_available_profiles()
+                available = await self.storage.get_available_profiles()
                 if not available:
-                    # This will only call API once, subsequent calls use cache
                     profiles = await self._ensure_initial_fetch(folder_id)
                     if profiles:
-                        await self.state.update_cache(profiles)
-                    available = await self.state.get_available_profiles()
+                        logger.info(f"[ProfileAllocationService] Adding {len(self._cache_profiles)} profiles to pool: {self._cache_profiles}") # type: ignore
+                        fetched = await self.storage.replace_all_profiles(profiles)
+                        logger.info(f"[ProfileAllocationService] Fetched profiles {fetched}")
+                        pool_count = await self.storage.get_pool_count()
+                        logger.info(f"[ProfileAllocationService] Pool count after replace: {pool_count}")
+                    available = await self.storage.get_available_profiles()
             
-            # Try to acquire an existing profile
-            for profile_id in available:
-                if await self.state.try_acquire(profile_id):
-                    logger.info(f"Acquired existing profile {profile_id}")
-                    return profile_id
+            profile_id = await self.storage.acquire_any_available()
+            if profile_id:
+                return profile_id
             
-            # Check if we can create a new profile
             async with self._profile_creation_lock:
-                current_total = await self.state.get_total_count()
-                
+                current_total = await self.storage.get_pool_count()
+                if current_total is None:
+                    current_total = 0
+
+                logger.info(f"[ProfileAllocationService] Current total {current_total}")
+
                 if current_total < self.max_profiles:
                     logger.info(f"Creating new profile ({current_total}/{self.max_profiles})")
                     
@@ -129,14 +133,12 @@ class ProfileAllocationService:
                     )
                     
                     if new_profile_id:
-                        added = await self.state.add_profile_if_under_limit(
+                        added = await self.storage.add_profile_if_under_limit(
                             new_profile_id, 
                             self.max_profiles
                         )
                         if added:
-                            if await self.state.try_acquire(new_profile_id):
-                                logger.info(f"Created and acquired {new_profile_id}")
-                                return new_profile_id
+                            logger.info(f"Created profile {new_profile_id} and added to pool")
                         else:
                             logger.warning(f"Max limit reached, cleaning up {new_profile_id}")
                             try:
@@ -154,7 +156,7 @@ class ProfileAllocationService:
             logger.error("[ProfileAllocator] Attempted to release None profile!")
             return
         
-        success = await self.state.release(profile_id)
+        success = await self.storage.release_profile(profile_id)
         if success:
             logger.info(f"[Allocator] Released {profile_id}")
         else:
@@ -166,7 +168,7 @@ class ProfileAllocationService:
             logger.error("[ProfileAllocator] Attempted to delete None profile")
             return
         
-        success = await self.state.mark_deleted(profile_id)
+        success = await self.storage.mark_deleted(profile_id)
         if success:
             logger.info(f"[Allocator] Marked {profile_id} as deleted")
             try:
@@ -179,6 +181,6 @@ class ProfileAllocationService:
     
     async def get_pool_status(self) -> dict:
         """Get current pool status."""
-        status = await self.state.get_status()
+        status = await self.storage.get_status()
         status['cache_initialized'] = self._initial_fetch_done
         return status

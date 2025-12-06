@@ -35,7 +35,7 @@ class ProfileManager(BaseManagerApi):
         """
         super().__init__(api_url, api_token)
     
-    async def _get_profile_field(self, folder_id: str, field_name: str):
+    async def _get_profile_field(self, folder_id: str, field_name: str) -> List[str]:
         """Helper to get a specific field from a profile by id.
 
         Args:

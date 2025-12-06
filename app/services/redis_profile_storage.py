@@ -20,7 +20,7 @@ class RedisProfileStorage:
         self.reporter = RedisProfileStatusReporter(self.client, self.key_manager)
 
     async def initialize(self):
-        await self.client.ping() # type: ignore
+        await self.client.ping()  # type: ignore
         await self.script_manager.register_scripts()
         logger.info("[RedisStorage] Initialized.")
     
@@ -31,18 +31,12 @@ class RedisProfileStorage:
     async def flush(self) -> None:
         logger.info(f"[RedisProfileStorage] Flush redis")
         await self.client.flushdb()
-
-    async def try_acquire_profile(self, profile_id: str) -> bool:
-        return await self.operations.try_acquire_profile(profile_id=profile_id)
     
     async def release_profile(self, profile_id) -> bool:
         return await self.operations.release_profile(profile_id=profile_id)
     
     async def mark_deleted(self, profile_id) -> bool:
         return await self.operations.mark_deleted(profile_id=profile_id)
-    
-    async def add_profile(self, profile_id) -> bool:
-        return await self.operations.add_profile(profile_id=profile_id)
     
     async def replace_all_profiles(self, profiles: List[str]) -> int:
         return await self.operations.replace_all_profiles(profiles=profiles)
@@ -60,3 +54,6 @@ class RedisProfileStorage:
     async def add_profile_if_under_limit(self, profile_id: str, max_limit: int) -> bool:
         """Add profile only if under limit (atomic check-and-add)."""
         return await self.operations.add_profile_if_under_limit(profile_id, max_limit)
+    
+    async def acquire_any_available(self) -> Optional[str]:
+        return await self.operations.acquire_any_available()

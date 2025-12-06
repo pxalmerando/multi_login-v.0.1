@@ -30,7 +30,7 @@ class WebSocketManager:
 
     async def send_personal_message(self, message: dict, user_id: str) -> None:
         """Send a message to all connections of a specific user."""
-        # ✅ Fixed: Check if user exists first
+        
         if user_id not in self.active_connections:
             logger.warning(f"User {user_id} not connected, cannot send message")
             return
@@ -44,7 +44,7 @@ class WebSocketManager:
                 logger.error(f"Error sending to user {user_id}: {e}")
                 disconnected.add(connection)
 
-        # Clean up dead connections
+        
         for connection in disconnected:
             await self.disconnect(websocket=connection, user_id=user_id)
                 
@@ -62,7 +62,7 @@ class WebSocketManager:
         for user_id, connections in self.active_connections.items():
             disconnected_connections: Set[WebSocket] = set()
             
-            # ✅ Fixed: Iterate over each connection in the set
+            
             for connection in connections:
                 try:
                     await connection.send_json(data=message)
@@ -70,15 +70,15 @@ class WebSocketManager:
                     logger.error(f"Error broadcasting to {user_id}: {e}")
                     disconnected_connections.add(connection)
             
-            # Remove dead connections
+            
             for conn in disconnected_connections:
                 connections.discard(conn)
             
-            # Mark user for removal if no connections left
+            
             if not connections:
                 disconnected_users.add(user_id)
 
-        # Clean up users with no connections
+        
         for user_id in disconnected_users:
             del self.active_connections[user_id]
 

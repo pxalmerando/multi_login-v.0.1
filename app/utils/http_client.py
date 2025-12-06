@@ -24,7 +24,7 @@ class HttpClient:
 
     def __init__(self, base_url: str):
         self.base_url = base_url
-        self.client = httpx.AsyncClient()
+        self.client = httpx.AsyncClient(timeout=httpx.Timeout(10.0))
 
     def _full_url(self, endpoint: str) -> str:
         return f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"

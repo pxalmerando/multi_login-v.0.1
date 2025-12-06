@@ -6,7 +6,7 @@ from app.core.config import SECRET_KEY, ALGORITHM
 from app.database.profile_repository import ProfileRepository
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.services.multi_login_service import MultiLoginService
-from app.services.profile_state_manager import ProfileStateManager
+from app.services.profile_storage_protocol import ProfileStorageProtocol
 from app.services.redis_profile_storage import RedisProfileStorage
 from app.api.websocket.websocket_handlers import process_multiple_urls
 from app.services.profile_allocation_service import ProfileAllocationService
@@ -26,14 +26,14 @@ async def process_urls(
 ):
     """Process multiple URLs via WebSocket with JWT authentication."""
     
-    # Validate token before accepting
+    
     if token is None:
         await websocket.close(code=4001, reason="No token provided")
         return
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM]) # type: ignore
-        email: str = payload.get("sub") # type: ignore
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])  # type: ignore
+        email: str = payload.get("sub")  # type: ignore
         if email is None:
             await websocket.close(code=4002, reason="Invalid token payload")
             return
@@ -41,14 +41,14 @@ async def process_urls(
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason=str(e))
         return
     
-    # Token valid - accept connection
+    
     await websocket.accept()
     await websocket.send_json({
         "status": "connected",
         "message": f"Authenticated as {email}"
     })
     
-    # Initialize services
+    
     redis_storage = RedisProfileStorage()
     multi_login_service = MultiLoginService()
     
@@ -57,10 +57,10 @@ async def process_urls(
         await multi_login_service.initialize()
         
         profile_repo = ProfileRepository(multi_login_service=multi_login_service)
-        profile_state = ProfileStateManager(redis_storage)
+        profile_storage = redis_storage
         profile_allocator = ProfileAllocationService(
             repository=profile_repo, 
-            state_manager=profile_state
+            storage=profile_storage
         )
 
         while True:
@@ -102,9 +102,9 @@ async def process_urls(
                 "message": f"Unexpected server error: {str(e)}"
             })
         except Exception:
-            pass  # Client already disconnected
+            pass  
     finally:
-        # Guaranteed cleanup
+        
         await redis_storage.flush()
         await redis_storage.close()
         await multi_login_service.cleanup()
