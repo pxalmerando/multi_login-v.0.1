@@ -1,31 +1,32 @@
 """Authentication service for business logic."""
 from typing import Optional
 from datetime import timedelta
-from app.models.schemas.user_schema import UserBase, UserInDB
-from app.models.schemas.auth_schema import AuthToken
-from app.security import Security
+from app.auth.schemas import UserBase, UserInDB
+from app.auth.schemas import AuthToken
+from app.security.hashing import AuthSecurity
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES
-from app.database.repository import user_repository
+from app.auth.repository import user_repository
 
 class AuthService:
     """Handles authentication-related business logic."""
     
     def __init__(self, repository):
         self.repository = repository
+        self.security = AuthSecurity()
     
     def authenticate_user(self, email: str, password: str) -> Optional[UserInDB]:
         """Authenticate a user with email and password."""
         user = self.repository.get_user_by_email(email)
         if not user:
             return None
-        if not Security.verify_password(password, user.hashed_password):
+        if not self.security.verify_password(password, user.hashed_password):
             return None
         return user
     
     def create_auth_response(self, user: UserInDB) -> AuthToken:
         """Create an authentication response with access token."""
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = Security.create_access_token(
+        access_token = self.security.create_access_token(
             data={"sub": user.email},
             expires_delta=access_token_expires
         )
@@ -43,6 +44,4 @@ class AuthService:
             user=user_data,
         )
 
-
-# Singleton instance
 auth_service = AuthService(user_repository)

@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock, AsyncMock
 from fastapi import WebSocket
 from app.services.multi_login_service import MultiLoginService
-from app.models.schemas.profile_models import MultiLoginProfileSession
+from app.multilogin.schemas import MultiLoginProfileSession
 
 @pytest.fixture
 def mock_websocket():

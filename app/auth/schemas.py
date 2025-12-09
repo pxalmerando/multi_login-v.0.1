@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
@@ -13,3 +14,9 @@ class UserCreate(UserBase):
 
 class UserInDB(UserBase):
     hashed_password: str
+
+class AuthToken(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserBase
+

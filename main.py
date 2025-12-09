@@ -1,11 +1,9 @@
 """FastAPI application entry point."""
 import logging
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.api.http import auth_routes
+from app.auth.api import http_routes
 from app.api.websocket import websocket_routes
-
-
+from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_routes.router)
+app.include_router(http_routes.router)
 app.include_router(websocket_routes.router)
 
 @app.get('/')

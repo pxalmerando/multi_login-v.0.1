@@ -8,13 +8,17 @@ from decouple import config
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-class Security:
+class AuthSecurity:
+    
+    @staticmethod
     def verify_password(plain_password, hashed_password) -> bool:
         return pwd_context.verify(plain_password, hashed_password)
 
+    @staticmethod
     def hash_password(password) -> str:
         return pwd_context.hash(password)
 
+    @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
         to_encode = data.copy()
         if expires_delta:
@@ -22,5 +26,5 @@ class Security:
         else:
             expires = datetime.now(timezone.utc) + timedelta(minutes=config("ACCESS_TOKEN_EXPIRE_MINUTES", cast=float))
         to_encode.update({"exp": expires})
-        encoded_jwt = jwt.encode(to_encode, config("SECRET_KEY"), algorithm=config("ALGORITHM"))
+        encoded_jwt = jwt.encode(to_encode, str(config("SECRET_KEY")), algorithm=str(config("ALGORITHM")))
         return encoded_jwt

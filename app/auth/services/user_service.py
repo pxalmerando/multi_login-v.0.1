@@ -1,27 +1,28 @@
 """User service for business logic."""
-from fastapi import HTTPException
-from app.models.schemas.user_schema import UserCreate, UserInDB
-from app.security import Security
-from app.validators import validate_password_strength
+from app.security.hashing import AuthSecurity
+from app.auth.repository import user_repository
+from app.auth.schemas import UserCreate, UserInDB
+from app.security.password_policy import validate_password_strength
+from app.auth.exceptions import EmailAlreadyRegisteredError
 from app.core.config import STATUS_BAD_REQUEST, ERROR_EMAIL_REGISTERED
-from app.database.repository import user_repository
-
 
 class UserService:
     def __init__(self, repository):
         self.repository = repository
-    
+        self.security = AuthSecurity()
+
     def create_user(self, user_data: UserCreate) -> UserInDB:
         """Create a new user with validation."""
+
         validate_password_strength(user_data.password)
         
         if self.repository.email_exist(user_data.email):
-            raise HTTPException(
+            raise EmailAlreadyRegisteredError(
                 status_code=STATUS_BAD_REQUEST,
                 detail=ERROR_EMAIL_REGISTERED
             )
         
-        hashed_password = Security.hash_password(user_data.password)
+        hashed_password = self.security.hash_password(user_data.password)
         user_in_db = UserInDB(
             email=user_data.email,
             username=user_data.username,

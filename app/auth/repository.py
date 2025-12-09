@@ -1,6 +1,6 @@
 """Database repository for user management operations."""
 from typing import Optional, Dict
-from app.models.schemas.user_schema import UserInDB
+from app.auth.schemas import UserInDB
 
 
 class UserRepository:
@@ -10,7 +10,7 @@ class UserRepository:
         """Initialize the user repository with an empty user database."""
         self.user_db: Dict[str, dict] = {}
 
-    def get_user_by_email(self, email: str) -> Optional[dict]:
+    def get_user_by_email(self, email: str) -> Optional[UserInDB]:
         """Retrieve a user by their email address.
 
         Args:

@@ -1,12 +1,12 @@
 """WebSocket routes for URL processing with authentication."""
 import logging
+from typing import Optional
 from fastapi import status
 from jose import jwt, JWTError
 from app.core.config import SECRET_KEY, ALGORITHM
 from app.database.profile_repository import ProfileRepository
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.services.multi_login_service import MultiLoginService
-from app.services.profile_storage_protocol import ProfileStorageProtocol
 from app.services.redis_profile_storage import RedisProfileStorage
 from app.api.websocket.websocket_handlers import process_multiple_urls
 from app.services.profile_allocation_service import ProfileAllocationService
@@ -32,8 +32,8 @@ async def process_urls(
         return
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])  # type: ignore
-        email: str = payload.get("sub")  # type: ignore
+        payload = jwt.decode(token, str(SECRET_KEY), algorithms=[str(ALGORITHM)])
+        email: Optional[str] = payload.get("sub")
         if email is None:
             await websocket.close(code=4002, reason="Invalid token payload")
             return
