@@ -1,9 +1,16 @@
 """WebSocket handlers for processing URLs and managing connections."""
 from fastapi import WebSocket
-from app.services.multi_login_service import MultiLoginService
-from app.services.batch_processing_orchestrator import BatchProcessingOrchestrator
 from app.adapters.websocket_notifier import WebSocketNotifier
+from app.services.multi_login_service import MultiLoginService
+from app.batch_processing.services.url_processor import URLProcessor
+from app.services.concurrent_task_executor import ConcurrentTaskExecutor
+from app.services.profile_lifecycle_manager import ProfileLifecycleManager
 from app.services.profile_allocation_service import ProfileAllocationService
+from app.batch_processing.services.progress_notifier import BatchProgressNotifier
+from app.batch_processing.services.result_aggregator import BatchResultAggregator
+from app.batch_processing.services.url_processing_service import URLProcessingService
+from app.batch_processing.services.processing_orchestrator import BatchProcessingOrchestrator
+
 async def process_multiple_urls(
     websocket: WebSocket,
     urls: list[str],
@@ -23,11 +30,21 @@ async def process_multiple_urls(
     notifier = WebSocketNotifier(
         websocket=websocket,
     )
+
+    lifecycle_manager = ProfileLifecycleManager(profile_allocator)
+
+    url_processing_service = URLProcessingService()
+    url_processor = URLProcessor(multi_login_service, url_processing_service)
+    progress_notifier = BatchProgressNotifier(notifier)
+    result_aggregator = BatchResultAggregator()
+    task_executor = ConcurrentTaskExecutor(max_concurrency=max_concurrency)
     
     orchestrator = BatchProcessingOrchestrator(
-        multi_login_service=multi_login_service,
-        notifier=notifier,
-        max_concurrency=max_concurrency,
-        profile_allocator=profile_allocator
+        url_processor,
+        progress_notifier,
+        result_aggregator,
+        task_executor,
+        lifecycle_manager
     )
+
     await orchestrator.process_batch(urls=urls)

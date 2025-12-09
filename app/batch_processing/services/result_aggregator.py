@@ -1,7 +1,7 @@
 
 import logging
 from typing import List
-from app.models.schemas.processing_results import BatchProcessingResult, ProcessingResult
+from app.batch_processing.schemas import BatchProcessingResult, ProcessingResult
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class BatchResultAggregator:
     
     @staticmethod
     def handle_exception_results(
-        results: List,
+        results: List[ProcessingResult],
         urls: List[str]
     ) -> List[ProcessingResult]:
         """

@@ -1,9 +1,9 @@
 
 import logging
-
-from app.models.schemas.processing_results import ProcessingResult
+from app.batch_processing.schemas import ProcessingResult
 from app.services.multi_login_service import MultiLoginService
-from app.services.url_processing_service import URLProcessingService
+from app.batch_processing.exceptions import map_exception_to_message
+from app.batch_processing.services.url_processing_service import URLProcessingService
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +31,10 @@ class URLProcessor:
         Process a URL using the given profile.
         Returns ProcessingResult with success/failure details.
         """
+
         selenium_url = None
-        
         try:
-            
             selenium_url = await self.multi_login.start_profile(profile_id, folder_id)
-            
             if selenium_url is None:
                 logger.error(f"[URLProcessor] Failed to start profile {profile_id}")
                 return ProcessingResult(
@@ -44,16 +42,11 @@ class URLProcessor:
                     error_message="Failed to start browser profile",
                     url=url
                 )
-            
             logger.info(f"[URLProcessor] Started browser at {selenium_url}")
-            
-            
             result = await self.url_processor.process_url(
                 url=url,
                 selenium_url=selenium_url
             )
-            
-            
             if result.captcha_detected:
                 logger.warning(f"[URLProcessor] CAPTCHA detected for {url}")
                 return ProcessingResult(
@@ -62,16 +55,13 @@ class URLProcessor:
                     captcha_detected=True,
                     error_message="CAPTCHA detected!"
                 )
-            
             if result.success:
                 logger.info(f"[URLProcessor] Successfully processed {url}")
-            
             return result
-            
         except Exception as e:
             logger.exception(f"[URLProcessor] Error processing {url}: {e}")
             return ProcessingResult(
                 success=False,
                 url=url,
-                error_message=str(e)
+                error_message=map_exception_to_message(e)
             )

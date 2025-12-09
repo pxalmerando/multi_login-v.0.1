@@ -1,8 +1,6 @@
 
-
+from app.batch_processing.schemas import ProcessingResult
 from app.adapters.websocket_notifier import WebSocketNotifier
-from app.models.schemas.processing_results import ProcessingResult
-
 
 class BatchProgressNotifier:
     """
