@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from typing import Dict, Optional, List
-from app.models.schemas.profile_models import MultiLoginProfileSession
+from app.multilogin.schemas import MultiLoginProfileSession
 
 logger = logging.getLogger(__name__)
 
