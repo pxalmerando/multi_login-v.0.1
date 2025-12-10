@@ -1,6 +1,7 @@
-from typing import Dict, Any, List, Optional
-from .base_manager import BaseManagerApi
 import logging
+from typing import Dict, Any, List, Optional
+from app.multilogin.profile.base_manager import BaseManagerApi
+
 
 logger = logging.getLogger(__name__)
 

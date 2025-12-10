@@ -1,14 +1,10 @@
-import logging
 from typing import Optional
 from decouple import config
 import redis.asyncio as redis
-
-from app.multilogin.services.auth_service import UserAuth
-from app.multilogin.services.exceptions import MultiLoginServiceError
-from app.multilogin.services.redis_token_manager import RedisTokenManager
+from app.multilogin.exceptions import MultiLoginServiceError
 from app.utils.http_client import HttpClient
-
-logger = logging.getLogger(__name__)
+from app.multilogin.auth.auth_service import UserAuth
+from app.multilogin.auth.redis_token_manager import RedisTokenManager
 
 
 class MultiLoginAuthService:
@@ -41,9 +37,9 @@ class MultiLoginAuthService:
         """Create a token manager with the given credentials"""
         
         user_auth = UserAuth(
+            base_url=self.base_url,
             email=self.email,
             password=self.password,
-            base_url=self.base_url,
             http_client=self.http_client
         )
         

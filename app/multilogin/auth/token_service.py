@@ -1,9 +1,8 @@
 import logging
 from typing import Optional
-
-from .token_repository import TokenRepository
-from .token_validator import TokenValidator
-from .auth_service import UserAuth
+from app.multilogin.auth.auth_service import UserAuth
+from app.multilogin.auth.token_repository import TokenRepository
+from app.multilogin.auth.token_validator import TokenValidator
 
 logger = logging.getLogger(__name__)
 

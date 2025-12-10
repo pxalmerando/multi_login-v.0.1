@@ -5,8 +5,7 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 class TokenValidator:
-    def __init__(self, grace_period_seconds: int = 60) -> bool:
-        
+    def __init__(self, grace_period_seconds: int = 60) -> None:
         self.grace_period_seconds = grace_period_seconds
     
     def has_required_fields(self, tokens: Optional[dict]):
@@ -28,11 +27,11 @@ class TokenValidator:
         
         return True
     
-    def is_expired(self, tokens: dict) -> bool:
+    def is_expired(self, tokens: Optional[dict]) -> bool:
 
         if not self.has_required_fields(tokens):
             logger.warning(f"[TokenValidator] Cannot check expiration - missing fields")
-            return False
+            return True
         
         try:
             expiration_timestamp = tokens["token_expiration"]

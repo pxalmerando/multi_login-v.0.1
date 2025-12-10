@@ -1,9 +1,9 @@
 import asyncio
 import logging
 from typing import Optional
-from app.multilogin.services.folder_manager import FolderManager
-from app.multilogin.services.profile_manager import ProfileManager
-from app.multilogin.services.redis_token_manager import RedisTokenManager
+from app.multilogin.auth.redis_token_manager import RedisTokenManager
+from app.multilogin.profile.folder_manager import FolderManager
+from app.multilogin.profile.profile_manager import ProfileManager
 from app.services.multilogin_auth_service import MultiLoginAuthService
 from app.services.profile_operation_service import ProfileOperationService
 from app.services.session_cleanup_service import SessionCleanupService
@@ -78,7 +78,7 @@ class MultiLoginService:
             )
             
             self._initialized = True
-            logger.info("MultiLoginService initialized successfully")
+            logger.info(f"[MultiLoginService] initialized successfully")
     
     async def get_folder_id(self, folder_name: Optional[str] = None) -> str:
         """
@@ -138,7 +138,7 @@ class MultiLoginService:
         
         await self.profile_registry.unregister(profile_id)
         await self.profile_manager.delete_profile(profile_id)
-        logger.info(f"Profile {profile_id} deleted")
+        logger.info(f"[MultiLoginService] Profile {profile_id} deleted")
     
     async def cleanup(self) -> None:
         """Stop all running profiles"""
