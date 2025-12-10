@@ -13,7 +13,8 @@
 
 ## 2. WebSocket handler wires the batch feature
 
-- Validates the request.
+- Inside a loop, the handler receives JSON from the client with a `urls` list.
+- Validates that `urls` is a non-empty list of strings.
 - Builds batch components:
   - URLProcessor (uses MultiLoginService + URLProcessingService)
   - BatchProgressNotifier (wraps WebSocketNotifier)
@@ -21,7 +22,7 @@
   - ConcurrentTaskExecutor (with max_concurrency)
   - ProfileLifecycleManager
 - Creates BatchProcessingOrchestrator with these dependencies.
-- Calls `orchestrator.process_batch(urls)`.
+- Calls process_multiple_urls(...) which delegates to `orchestrator.process_batch(urls)`.
 
 ## 3. Orchestrator processes URLs concurrently
 
