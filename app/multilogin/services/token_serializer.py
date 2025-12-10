@@ -36,11 +36,7 @@ class TokenSerializer:
                 f"[TokenSerializer] Invalid JSON format: {e}"
             )
             return None
-        
-        except UnicodeDecodeError as e:
-            logger.warning(f"[TokenSerializer] Failed to decode bytes to UTF-8: {e}")
-            return None
-        
+               
         except Exception as e:
             logger.exception(
                 f"[TokenSerializer] Unexpected error during deserialization"

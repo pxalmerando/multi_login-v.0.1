@@ -3,7 +3,8 @@
 from typing import Optional
 import redis.asyncio as redis
 import logging
-from app.services.multilogin.token_serializer import TokenSerializer
+
+from app.multilogin.services.token_serializer import TokenSerializer
 
 logger = logging.getLogger(__name__)
 

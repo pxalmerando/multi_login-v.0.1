@@ -1,5 +1,5 @@
 from app.multilogin.schemas import MultiLoginProfileSession
-from app.services.multilogin.exceptions import MultiLoginServiceError
+from app.multilogin.services.exceptions import MultiLoginServiceError
 
 def parse_profile_start_response(response: dict, profile_id: str) -> MultiLoginProfileSession:
 

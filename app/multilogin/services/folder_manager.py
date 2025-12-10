@@ -1,7 +1,8 @@
 from typing import Optional
-from app.services.multilogin.base_manager import BaseManagerApi
 import logging
 import random
+
+from app.multilogin.services.base_manager import BaseManagerApi
 
 logger = logging.getLogger(__name__)
 

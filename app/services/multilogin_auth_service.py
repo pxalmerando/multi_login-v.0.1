@@ -1,9 +1,12 @@
 import logging
+from typing import Optional
 from decouple import config
 import redis.asyncio as redis
-from app.services.multilogin.auth_service import UserAuth
-from app.services.multilogin.redis_token_manager import RedisTokenManager
-from app.services.multilogin.exceptions import MultiLoginServiceError
+
+from app.multilogin.services.auth_service import UserAuth
+from app.multilogin.services.exceptions import MultiLoginServiceError
+from app.multilogin.services.redis_token_manager import RedisTokenManager
+from app.utils.http_client import HttpClient
 
 logger = logging.getLogger(__name__)
 
@@ -16,28 +19,32 @@ class MultiLoginAuthService:
     which handles FastAPI user authentication.
     """
     
-    def __init__(self, email: str = None, password: str = None, 
-                 base_url: str = None, http_client = None,
-                 token_manager: RedisTokenManager = None):
-        
+    def __init__(
+            self, 
+            base_url: str, 
+            http_client: HttpClient,
+            token_manager: Optional[RedisTokenManager] = None
+        ):
+
+        self.base_url = base_url
+        self.http_client = http_client
+        self.email = str(config("EMAIL"))
+        self.password = str(config("PASSWORD"))
         if token_manager:
             self.token_manager = token_manager
         else:
-            self.token_manager = self._create_token_manager(
-                email, password, base_url, http_client
-            )
+            self.token_manager = self._create_token_manager()
     
-    def _create_token_manager(self, email: str, password: str, 
-                            base_url: str, http_client) -> RedisTokenManager:
+    def _create_token_manager(
+            self,
+        ) -> RedisTokenManager:
         """Create a token manager with the given credentials"""
-        email = email or config("EMAIL")
-        password = password or config("PASSWORD")
         
         user_auth = UserAuth(
-            email=email,
-            password=password,
-            base_url=base_url,
-            http_client=http_client
+            email=self.email,
+            password=self.password,
+            base_url=self.base_url,
+            http_client=self.http_client
         )
         
         redis_client = redis.from_url("redis://127.0.0.1:6379", decode_responses=True)

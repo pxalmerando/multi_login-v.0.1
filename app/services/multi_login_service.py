@@ -1,15 +1,15 @@
 import asyncio
 import logging
 from typing import Optional
+from app.multilogin.services.folder_manager import FolderManager
+from app.multilogin.services.profile_manager import ProfileManager
+from app.multilogin.services.redis_token_manager import RedisTokenManager
 from app.services.multilogin_auth_service import MultiLoginAuthService
 from app.services.profile_operation_service import ProfileOperationService
 from app.services.session_cleanup_service import SessionCleanupService
 from app.utils.http_client import HttpClient
 from app.core.config import BASE_URL, LAUNCHER_URL
 from app.services.profile_registry import ProfileRegistry
-from app.services.multilogin.folder_manager import FolderManager
-from app.services.multilogin.profile_manager import ProfileManager
-from app.services.multilogin.redis_token_manager import RedisTokenManager
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +22,13 @@ class MultiLoginService:
     It delegates actual work to focused, single-responsibility services.
     """
     
-    def __init__(self, email: str = None, password: str = None, 
-                 base_url: str = None, launcher_url: str = None,
-                 token_manager: Optional[RedisTokenManager] = None):
+    def __init__(
+            self,
+            token_manager: Optional[RedisTokenManager] = None
+        ):
         
-        self.base_url = base_url or BASE_URL
-        self.launcher_url = launcher_url or LAUNCHER_URL
+        self.base_url = BASE_URL
+        self.launcher_url = LAUNCHER_URL
         
         
         self.http_client = HttpClient(self.base_url)
@@ -37,9 +38,7 @@ class MultiLoginService:
         self.profile_registry = ProfileRegistry()
         
         
-        self.multilogin_auth = MultiLoginAuthService(
-            email, password, self.base_url, self.http_client, token_manager
-        )
+        self.multilogin_auth = MultiLoginAuthService(self.base_url, self.http_client, token_manager)
         
         
         self.folder_manager: Optional[FolderManager] = None
