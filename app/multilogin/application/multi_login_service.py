@@ -1,0 +1,148 @@
+import asyncio
+import logging
+from typing import Optional
+from app.multilogin.auth.redis_token_manager import RedisTokenManager
+from app.multilogin.infrastructure.folder_manager import FolderManager
+from app.multilogin.infrastructure.profile_manager import ProfileManager
+from app.multilogin.infrastructure.auth.multilogin_auth_service import MultiLoginAuthService
+from app.multilogin.infrastructure.profile_operation_service import ProfileOperationService
+from app.multilogin.infrastructure.profile_registry import ProfileRegistry
+from app.multilogin.application.session_cleanup_service import SessionCleanupService
+from app.infrastructure.http.http_client import HttpClient
+from app.core.config import BASE_URL, LAUNCHER_URL
+
+logger = logging.getLogger(__name__)
+
+
+class MultiLoginService:
+    """
+    Orchestrates MultiLogin operations by coordinating specialized services.
+    
+    This is the main entry point that other parts of your application use.
+    It delegates actual work to focused, single-responsibility services.
+    """
+    
+    def __init__(
+            self,
+            token_manager: Optional[RedisTokenManager] = None
+        ):
+        
+        self.base_url = BASE_URL
+        self.launcher_url = LAUNCHER_URL
+        
+        
+        self.http_client = HttpClient(self.base_url)
+        self.http_launcher = HttpClient(self.launcher_url)
+        
+        
+        self.profile_registry = ProfileRegistry()
+        
+        
+        self.multilogin_auth = MultiLoginAuthService(self.base_url, self.http_client, token_manager)
+        
+        
+        self.folder_manager: Optional[FolderManager] = None
+        self.profile_manager: Optional[ProfileManager] = None
+        self.profile_operations: Optional[ProfileOperationService] = None
+        self.cleanup_service: Optional[SessionCleanupService] = None
+        self.headers: Optional[dict] = None
+        
+        self._init_lock = asyncio.Lock()
+        self._initialized = False
+    
+    async def initialize(self) -> None:
+        """Initialize all service components"""
+        if self._initialized:
+            return
+        
+        async with self._init_lock:
+            if self._initialized:
+                return
+            
+            
+            access_token = await self.multilogin_auth.get_access_token()
+            self.headers = {"Authorization": f"Bearer {access_token}"}
+            
+            
+            self.folder_manager = FolderManager(self.base_url, access_token)
+            self.profile_manager = ProfileManager(self.base_url, access_token)
+            
+            
+            self.profile_operations = ProfileOperationService(
+                self.http_launcher,
+                self.profile_registry
+            )
+            self.cleanup_service = SessionCleanupService(
+                self.profile_registry,
+                self.profile_operations
+            )
+            
+            self._initialized = True
+            logger.info(f"[MultiLoginService] initialized successfully")
+    
+    async def get_folder_id(self, folder_name: Optional[str] = None) -> str:
+        """
+        Get or create a default folder.
+        Delegates to FolderManager which already has this logic.
+        """
+        if not self._initialized:
+            await self.initialize()
+        
+        return await self.folder_manager.get_or_create_default_folder(folder_name)
+    
+    async def start_profile(self, profile_id: str, folder_id: Optional[str] = None) -> str:
+        """
+        Start a profile and return its Selenium URL.
+        
+        Args:
+            profile_id: The profile to start
+            folder_id: Optional folder ID (will be fetched if not provided)
+        
+        Returns:
+            Selenium URL for the started profile
+        """
+        if not profile_id or not profile_id.strip():
+            raise ValueError(f"[MultiLoginService] profile_id must not be empty")
+        
+        if folder_id is None:
+            raise ValueError(f"[MultiLoginService] Folder ID is None")
+        
+        if not self._initialized:
+            await self.initialize()
+
+        return await self.profile_operations.start_profile(
+            profile_id, folder_id, self.headers
+        )
+    
+    async def stop_profile(self, profile_id: str) -> None:
+        """Stop a running profile"""
+        if not self._initialized:
+            await self.initialize()
+        
+        await self.profile_operations.stop_profile(profile_id, self.headers)
+    
+    async def delete_profile(self, profile_id: str) -> None:
+        """
+        Delete a profile permanently (stops it first if running).
+        
+        Note: This is different from ProfileLifecycleManager.handle_failure()
+        which makes the *decision* to delete. This just executes the deletion.
+        """
+        if not self._initialized:
+            await self.initialize()
+        
+        
+        if await self.profile_registry.is_running(profile_id):
+            await self.profile_operations.stop_profile(profile_id, self.headers)
+        
+        
+        await self.profile_registry.unregister(profile_id)
+        await self.profile_manager.delete_profile(profile_id)
+        logger.info(f"[MultiLoginService] Profile {profile_id} deleted")
+    
+    async def cleanup(self) -> None:
+        """Stop all running profiles"""
+        if not self._initialized:
+            await self.initialize()
+        
+        await self.cleanup_service.cleanup_all(self.headers)

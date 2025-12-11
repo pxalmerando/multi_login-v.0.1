@@ -1,5 +1,5 @@
 import pytest
-from app.utils.http_client import HttpClient
+from app.infrastructure.http.http_client import HttpClient
 from unittest.mock import Mock, patch
 import requests
 

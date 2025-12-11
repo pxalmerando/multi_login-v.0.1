@@ -1,5 +1,5 @@
 import pytest
-from app.api.websocket.websocket_handlers import process_multiple_urls
+from app.batch_processing.application.process_multiple_urls import process_multiple_urls
 from unittest.mock import AsyncMock, patch
 
 class TestWebSocketHandlers:

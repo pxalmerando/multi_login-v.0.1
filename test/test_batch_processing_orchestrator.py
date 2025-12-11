@@ -1,9 +1,9 @@
 import pytest
 from unittest.mock import AsyncMock, Mock
-from app.adapters.websocket_notifier import WebSocketNotifier
-from app.models.schemas.processing_results import ProcessingResult
+from app.infrastructure.websocket.websocket_notifier import WebSocketNotifier
+from app.batch_processing.schemas import ProcessingResult
 from app.services.batch_processing_orchestrator import BatchProcessingOrchestrator
-from app.services.multi_login_service import MultiLoginService
+from app.multilogin.application.multi_login_service import MultiLoginService
 from app.services.profile_allocation_service import ProfileAllocationService
 
 class TestBatchProcessingOrchestrator:

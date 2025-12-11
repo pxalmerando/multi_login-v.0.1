@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, Mock
 
-from app.services.redis_key_manager import RedisKeyManager
+from app.infrastructure.redis.redis_key_manager import RedisKeyManager
 from app.services.redis_profile_operation import RedisProfileOperations
 from app.services.redis_script_manager import RedisScriptManager
 

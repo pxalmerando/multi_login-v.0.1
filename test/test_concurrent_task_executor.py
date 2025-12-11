@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 
-from app.services.concurrent_task_executor import ConcurrentTaskExecutor
+from app.utils.concurrent_task_executor import ConcurrentTaskExecutor
 
 class TestConcurrentTaskExecutor:
     """Test ConcurrentTaskExecutor - manages concurrent execution with rate limiting"""
