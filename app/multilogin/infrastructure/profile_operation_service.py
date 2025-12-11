@@ -1,10 +1,10 @@
 import asyncio
 import logging
 from typing import Dict
-from app.utils.http_client import HttpClient
-from app.services.profile_registry import ProfileRegistry
+from app.multilogin.infrastructure.profile_registry import ProfileRegistry
+from app.infrastructure.http.http_client import HttpClient
 from app.multilogin.exceptions import MultiLoginServiceError
-from app.multilogin.profile.profile_launch_parser import parse_profile_start_response
+from app.multilogin.infrastructure.profile_launch_parser import parse_profile_start_response
 
 logger = logging.getLogger(__name__)
 

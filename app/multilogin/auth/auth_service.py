@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Any, Dict, Optional
 from app.multilogin.exceptions import MultiLoginAuthError
-from app.utils.http_client import HttpClient
+from app.infrastructure.http.http_client import HttpClient
 
 logger = logging.getLogger(__name__)
 

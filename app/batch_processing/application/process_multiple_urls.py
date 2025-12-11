@@ -1,11 +1,11 @@
 """WebSocket handlers for processing URLs and managing connections."""
 from fastapi import WebSocket
-from app.adapters.websocket_notifier import WebSocketNotifier
-from app.services.multi_login_service import MultiLoginService
+from app.infrastructure.websocket.websocket_notifier import WebSocketNotifier
+from app.multilogin.application.multi_login_service import MultiLoginService
 from app.batch_processing.services.url_processor import URLProcessor
-from app.services.concurrent_task_executor import ConcurrentTaskExecutor
-from app.services.profile_lifecycle_manager import ProfileLifecycleManager
-from app.services.profile_allocation_service import ProfileAllocationService
+from app.multilogin.application.profile_allocation_service import ProfileAllocationService
+from app.utils.concurrent_task_executor import ConcurrentTaskExecutor
+from app.multilogin.services.profile_lifecycle_manager import ProfileLifecycleManager
 from app.batch_processing.services.progress_notifier import BatchProgressNotifier
 from app.batch_processing.services.result_aggregator import BatchResultAggregator
 from app.batch_processing.services.url_processing_service import URLProcessingService

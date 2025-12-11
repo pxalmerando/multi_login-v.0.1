@@ -3,8 +3,8 @@ import logging
 import time
 from typing import Optional
 
-from app.database.profile_repository import ProfileRepository
-from app.services.redis_profile_storage import RedisProfileStorage
+from app.infrastructure.redis.redis_profile_storage import RedisProfileStorage
+from app.multilogin.repositories.profile_repository import ProfileRepository
 
 logger = logging.getLogger(__name__)
 

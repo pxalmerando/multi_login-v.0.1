@@ -2,14 +2,14 @@ import asyncio
 import logging
 from typing import Optional
 from app.multilogin.auth.redis_token_manager import RedisTokenManager
-from app.multilogin.profile.folder_manager import FolderManager
-from app.multilogin.profile.profile_manager import ProfileManager
-from app.services.multilogin_auth_service import MultiLoginAuthService
-from app.services.profile_operation_service import ProfileOperationService
-from app.services.session_cleanup_service import SessionCleanupService
-from app.utils.http_client import HttpClient
+from app.multilogin.infrastructure.folder_manager import FolderManager
+from app.multilogin.infrastructure.profile_manager import ProfileManager
+from app.multilogin.infrastructure.auth.multilogin_auth_service import MultiLoginAuthService
+from app.multilogin.infrastructure.profile_operation_service import ProfileOperationService
+from app.multilogin.infrastructure.profile_registry import ProfileRegistry
+from app.multilogin.application.session_cleanup_service import SessionCleanupService
+from app.infrastructure.http.http_client import HttpClient
 from app.core.config import BASE_URL, LAUNCHER_URL
-from app.services.profile_registry import ProfileRegistry
 
 logger = logging.getLogger(__name__)
 

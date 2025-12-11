@@ -2,10 +2,10 @@ import logging
 from typing import List, Optional
 import redis.asyncio as redis
 
-from app.services.redis_key_manager import RedisKeyManager
-from app.services.redis_profile_operation import RedisProfileOperations
-from app.services.redis_profile_reporter import RedisProfileStatusReporter
-from app.services.redis_script_manager import RedisScriptManager
+from app.infrastructure.redis.redis_key_manager import RedisKeyManager
+from app.infrastructure.redis.redis_profile_operation import RedisProfileOperations
+from app.infrastructure.redis.redis_profile_reporter import RedisProfileStatusReporter
+from app.infrastructure.redis.redis_script_manager import RedisScriptManager
 
 logger = logging.getLogger(__name__)
 

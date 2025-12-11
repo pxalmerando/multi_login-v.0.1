@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, Mock
 from app.models.schemas.processing_results import ProcessingResult
-from app.services.multi_login_service import MultiLoginService
+from app.multilogin.application.multi_login_service import MultiLoginService
 from app.services.url_processing_service import URLProcessingService
 from app.services.url_processor import URLProcessor
 

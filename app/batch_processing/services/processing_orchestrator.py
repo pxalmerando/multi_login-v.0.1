@@ -1,8 +1,8 @@
 import logging
 from typing import List
 from app.batch_processing.services.url_processor import URLProcessor
-from app.services.concurrent_task_executor import ConcurrentTaskExecutor
-from app.services.profile_lifecycle_manager import ProfileLifecycleManager
+from app.utils.concurrent_task_executor import ConcurrentTaskExecutor
+from app.multilogin.services.profile_lifecycle_manager import ProfileLifecycleManager
 from app.batch_processing.schemas import ProcessingResult, BatchProcessingResult
 from app.batch_processing.services.result_aggregator import BatchResultAggregator
 from app.batch_processing.services.progress_notifier import BatchProgressNotifier

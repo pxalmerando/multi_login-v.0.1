@@ -1,4 +1,4 @@
-from app.services.redis_key_manager import RedisKeyManager
+from app.infrastructure.redis.redis_key_manager import RedisKeyManager
 
 manager = RedisKeyManager()
 

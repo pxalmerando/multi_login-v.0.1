@@ -1,7 +1,7 @@
 
 import logging
 from app.batch_processing.schemas import ProcessingResult
-from app.services.multi_login_service import MultiLoginService
+from app.multilogin.application.multi_login_service import MultiLoginService
 from app.batch_processing.exceptions import map_exception_to_message
 from app.batch_processing.services.url_processing_service import URLProcessingService
 

@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 import logging
 
-from app.database.profile_repository import ProfileRepository
-from app.services.multi_login_service import MultiLoginService
+from app.multilogin.repositories.profile_repository import ProfileRepository
+from app.multilogin.application.multi_login_service import MultiLoginService
 
 logger = logging.getLogger(__name__)
 

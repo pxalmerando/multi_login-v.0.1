@@ -1,7 +1,8 @@
 import logging
 from typing import List
-from app.services.profile_registry import ProfileRegistry
-from app.services.profile_operation_service import ProfileOperationService
+
+from app.multilogin.infrastructure.profile_operation_service import ProfileOperationService
+from app.multilogin.infrastructure.profile_registry import ProfileRegistry
 
 logger = logging.getLogger(__name__)
 

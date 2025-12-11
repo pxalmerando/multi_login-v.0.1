@@ -5,7 +5,7 @@ from app.batch_processing.schemas import ProcessingResult
 from app.captcha_detection.models import CaptchaResult
 from app.batch_processing.exceptions import map_exception_to_message
 from app.captcha_detection.detector import CaptchaDetector
-from app.batch_processing.services.selenium_manager import SeleniumManager
+from app.infrastructure.selenium.selenium_manager import SeleniumManager
 
 logger = logging.getLogger(__name__)
 class URLProcessingService:

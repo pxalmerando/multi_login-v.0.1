@@ -1,5 +1,5 @@
 import pytest
-from app.services.multi_login_service import MultiLoginService
+from app.multilogin.application.multi_login_service import MultiLoginService
 from unittest.mock import patch, AsyncMock, Mock
 
 class TestMultiLoginService:

@@ -2,7 +2,7 @@ from typing import Optional
 import logging
 import random
 
-from app.multilogin.profile.base_manager import BaseManagerApi
+from app.multilogin.infrastructure.base_manager import BaseManagerApi
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
-from app.services.redis_profile_storage import RedisProfileStorage
+from app.infrastructure.redis.redis_profile_storage import RedisProfileStorage
 
 
 @pytest.fixture

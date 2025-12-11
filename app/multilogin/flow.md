@@ -2,95 +2,96 @@
 
 ## 1. Authentication & Token Flow
 
-- Client calls `RedisTokenManager.get_tokens()`
-  - `TokenService` tries to load tokens from Redis via `TokenRepository`
-    - `TokenValidator` checks:
-      - required fields present
-      - not expired (60s grace)
-  - If valid:
-    - return cached tokens ✓
-  - Else:
-    - `UserAuth.login()`:
-      - MD5‑hash password
-      - `POST /user/signin`
-      - extract `access_token`, `refresh_token`
-      - compute `token_expiration`
-    - `TokenRepository` saves tokens to Redis
-      - cache failures are logged, non‑fatal
+**Layer:** `MultiLoginAuthService` (Infrastructure/Auth)
 
-## 2. Profile Management Flow
+- **Entry Point:** `MultiLoginAuthService.get_access_token()`
+  - Calls `RedisTokenManager.get_tokens()`
+  
+- **Token Manager Logic** (Internal Flow):
+  - `TokenService` attempts to load tokens from Redis via `TokenRepository`.
+    - `TokenValidator` checks required fields and expiration.
+  - **If valid:** Returns cached tokens immediately.
+  - **If invalid/missing:**
+    - `UserAuth` executes login logic (`email`/`password` from config).
+    - `POST /user/signin` to MultiLogin API.
+    - Extracts `access_token` and `refresh_token`.
+    - `TokenRepository` saves new tokens to Redis.
 
-- `ProfileManager.create_profile(...)`
-  - build payload:
-    - name, folder_id, browser/OS
-    - fingerprint, flags, storage, optional proxy
-  - `POST /profile/create`
-  - return full API response
+## 2. Profile Management Flow (CRUD)
 
-- `ProfileManager.list_profiles(...)`
-  - `POST /profile/search`
-  - filters: folder_id, is_removed, search_text
-  - pagination: limit, offset
-  - returns profiles list
+**Layer:** `ProfileRepository` → `ProfileManager` (Infrastructure)
 
-- `ProfileManager.update_profile(...)`
-  - `POST /profile/update`
-  - returns updated profile
+- **Create Profile**: `ProfileRepository.create_profile(folder_id, name)`
+  - Calls `ProfileManager.create_profile`
+    - Builds payload via `_build_profile_payload` using defaults:
+      - `browser_type`: "mimic", `os_type`: "windows"
+      - `parameters`: Includes default masking flags (audio, canvas, fonts, etc.) and local storage settings.
+      - `proxy`: If provided, sets `proxy_masking` to "custom".
+    - `POST /profile/create`
+  - Extracts and returns the new `profile_id` from response `ids` list.
 
-- `ProfileManager.delete_profile(profile_id, is_permanent)`
-  - `POST /profile/remove`
-  - payload: `{ ids: [profile_id], permanently: bool }`
+- **List Profiles**: `ProfileRepository.fetch_all_profiles(folder_id)`
+  - Calls `ProfileManager.get_profile_ids`
+    - `POST /profile/search` (Payload: `{folder_id, limit, offset...}`)
+    - Extracts `id` field from the resulting profile list.
+
+- **Delete Profile**: `ProfileRepository.delete_profile(profile_id)`
+  - Calls `ProfileManager.delete_profile`
+    - `POST /profile/remove`
+    - Payload: `{ ids: [profile_id], permanently: True }`
 
 ## 3. Folder Management Flow
 
-- `FolderManager.get_or_create_default_folder(...)`
-  - check in‑memory `_folder_id_cache`
-    - if present: return ID ✓
-  - if not cached:
-    - `GET /workspace/folders`
-      - if any folders:
-        - use first folder ID
-        - cache + return ✓
-      - else:
-        - `POST /workspace/folder_create`
-        - extract new folder ID
-        - cache ID
-        - return ID ✓
+**Layer:** `FolderManager` (Infrastructure)
 
-- Other folder operations
-  - `create_folder` → `POST /workspace/folder_create`
-  - `list_folders` → `GET /workspace/folders`
-  - `update_folder` → `POST /workspace/folder_update`
-  - `delete_folder` → `POST /workspace/folders_remove`
+- `FolderManager.get_or_create_default_folder(folder_name)`
+  - **Cache Check:** Checks in-memory `_folder_id_cache`. If present, return immediately.
+  - **Fetch Existing:** Calls `get_folder_ids()` (`GET /workspace/folders`).
+    - If folders exist, cache and return the first ID.
+  - **Create New:** If no folders exist:
+    - Calls `create_folder(folder_name)` (`POST /workspace/folder_create`).
+    - Extracts new ID, caches it, and returns it.
 
-## 4. Proxy Management Flow
+## 4. Profile Lifecycle & Operations (Start/Stop)
+
+**Layer:** `ProfileOperationService` (Application) → `ProfileRegistry` (State)
+
+- **Start Profile**: `ProfileOperationService.start_profile(profile_id, folder_id, headers)`
+  1. **Locking:** Acquires an `asyncio.Lock` specific to the `profile_id`.
+  2. **Registry Check:** Checks `ProfileRegistry` to see if session already exists.
+     - If yes, return existing `selenium_url`.
+  3. **API Call:**
+     - `GET /api/v1/profile/f/{folder_id}/p/{profile_id}/start?automation_type=selenium`
+  4. **Response Parsing:**
+     - `parse_profile_start_response` validates status code (200 OK).
+     - Maps JSON response to `MultiLoginProfileSession` object.
+  5. **Registration:**
+     - Stores session in `ProfileRegistry` (thread-safe).
+  6. **Return:** Returns the Selenium URL (e.g., `http://localhost:XXXX`).
+
+- **Stop Profile**: `ProfileOperationService.stop_profile(profile_id, headers)`
+  1. **Locking:** Acquires profile lock.
+  2. **Check:** If not running (according to Registry), return immediately.
+  3. **API Call:** `GET /api/v1/profile/stop/p/{profile_id}`.
+  4. **Unregister:** Removes profile from `ProfileRegistry`.
+
+- **Error Handling:**
+  - If start fails, attempts an immediate "cleanup" stop command to ensure consistency.
+
+## 5. Proxy Management Flow
+*(Based on file structure)*
 
 - `ProxyManager.generate_proxy()`
-  - randomly pick:
-    - protocol: `http` or `socks5`
-    - sessionType: `rotating` or `sticky`
+  - Selects protocol/session settings.
   - `POST /v1/proxy/connection_url`
-    - payload: `{ country, protocol, sessionType }`
-    - response: `"host:port:username:password"`
-    - parse to proxy dict `{host, port, username, password}`
+  - Returns parsed proxy credentials.
 
-- `ProxyManager.fetch_proxy_data()`
-  - `GET /v1/user`
-  - returns account/subscription data
+## 6. Infrastructure & Error Handling
 
-## 5. HTTP & Error Handling
-
-- `BaseManagerApi.request(method, endpoint, include_auth, **kwargs)`
-  - build URL: `{base_url}/{endpoint}`
-  - build headers:
-    - `Content-Type: application/json`
-    - `Accept: application/json`
-    - `Authorization: Bearer {api_token}` (if `include_auth=True`)
-  - call `HttpClient._make_request(...)`
-    - execute GET/POST with JSON
-    - return parsed JSON
-
-- Errors
-  - `MultiLoginAuthError` → login/token failures
-  - `MultiLoginServiceError` → invalid service responses
-  - Redis/API errors are logged; token cache writes are non‑blocking
+- **Base Manager**: `BaseManagerApi`
+  - Wraps `HttpClient`.
+  - Injects `Authorization: Bearer {token}` headers automatically.
+  
+- **Exceptions**:
+  - `MultiLoginAuthError`: Token or login failures.
+  - `MultiLoginServiceError`: Domain-specific failures (e.g., Profile already running, 401 Unauthorized during start).

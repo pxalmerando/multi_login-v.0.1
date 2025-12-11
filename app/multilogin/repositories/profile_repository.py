@@ -1,7 +1,7 @@
 
 import logging
 from typing import Optional, List
-from app.services.multi_login_service import MultiLoginService
+from app.multilogin.application.multi_login_service import MultiLoginService
 
 logger = logging.getLogger(__name__)
 

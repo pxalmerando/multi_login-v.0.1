@@ -2,7 +2,7 @@
 import logging
 from fastapi import FastAPI
 from app.auth.api import http_routes
-from app.api.websocket import websocket_routes
+from app.interface.websocket import websocket_routes
 from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(

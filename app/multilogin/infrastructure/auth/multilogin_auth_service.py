@@ -2,7 +2,7 @@ from typing import Optional
 from decouple import config
 import redis.asyncio as redis
 from app.multilogin.exceptions import MultiLoginServiceError
-from app.utils.http_client import HttpClient
+from app.infrastructure.http.http_client import HttpClient
 from app.multilogin.auth.auth_service import UserAuth
 from app.multilogin.auth.redis_token_manager import RedisTokenManager
 

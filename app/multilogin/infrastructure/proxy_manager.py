@@ -1,6 +1,6 @@
 import random
 
-from app.multilogin.profile.base_manager import BaseManagerApi
+from app.multilogin.infrastructure.base_manager import BaseManagerApi
 
 class ProxyManager(BaseManagerApi):
 

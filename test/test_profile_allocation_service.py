@@ -4,7 +4,7 @@ import logging
 
 from unittest.mock import AsyncMock, Mock, MagicMock, patch
 
-from app.database.profile_repository import ProfileRepository
+from app.multilogin.repositories.profile_repository import ProfileRepository
 from app.services.profile_state_manager import ProfileStateManager
 from app.services.profile_allocation_service import ProfileAllocationService
 

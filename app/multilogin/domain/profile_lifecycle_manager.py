@@ -1,7 +1,8 @@
 
 import logging
 from typing import Optional
-from app.services.profile_allocation_service import ProfileAllocationService
+
+from app.multilogin.application.profile_allocation_service import ProfileAllocationService
 
 logger = logging.getLogger(__name__)
 

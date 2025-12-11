@@ -1,7 +1,7 @@
 from typing import Dict, List
 import redis.asyncio as redis
 
-from app.services.redis_key_manager import RedisKeyManager
+from app.infrastructure.redis.redis_key_manager import RedisKeyManager
 
 
 class RedisProfileStatusReporter:

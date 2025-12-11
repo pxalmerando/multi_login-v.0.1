@@ -1,10 +1,11 @@
 
 
 import asyncio
-from typing import List, Optional, Tuple
-from app.services.redis_key_manager import RedisKeyManager
-from app.services.redis_script_manager import RedisScriptManager
+from typing import List, Optional
+from app.infrastructure.redis.redis_key_manager import RedisKeyManager
 import logging
+
+from app.infrastructure.redis.redis_script_manager import RedisScriptManager
 
 logger = logging.getLogger(__name__)
 

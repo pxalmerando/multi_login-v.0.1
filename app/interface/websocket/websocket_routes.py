@@ -4,12 +4,12 @@ from typing import Optional
 from fastapi import status
 from jose import jwt, JWTError
 from app.core.config import SECRET_KEY, ALGORITHM
-from app.database.profile_repository import ProfileRepository
+from app.multilogin.repositories.profile_repository import ProfileRepository
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from app.services.multi_login_service import MultiLoginService
-from app.services.redis_profile_storage import RedisProfileStorage
-from app.api.websocket.websocket_handlers import process_multiple_urls
-from app.services.profile_allocation_service import ProfileAllocationService
+from app.multilogin.application.multi_login_service import MultiLoginService
+from app.multilogin.application.profile_allocation_service import ProfileAllocationService
+from app.infrastructure.redis.redis_profile_storage import RedisProfileStorage
+from app.batch_processing.application.process_multiple_urls import process_multiple_urls
 
 logger = logging.getLogger(__name__)
 
