@@ -79,7 +79,6 @@
   - If start fails, attempts an immediate "cleanup" stop command to ensure consistency.
 
 ## 5. Proxy Management Flow
-*(Based on file structure)*
 
 - `ProxyManager.generate_proxy()`
   - Selects protocol/session settings.
