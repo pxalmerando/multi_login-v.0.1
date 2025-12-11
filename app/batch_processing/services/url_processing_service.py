@@ -2,9 +2,9 @@ import asyncio
 import logging
 import typing
 from app.batch_processing.schemas import ProcessingResult
-from app.services.captcha_detection.models import CaptchaResult
+from app.captcha_detection.models import CaptchaResult
 from app.batch_processing.exceptions import map_exception_to_message
-from app.services.captcha_detection.detector import CaptchaDetector
+from app.captcha_detection.detector import CaptchaDetector
 from app.batch_processing.services.selenium_manager import SeleniumManager
 
 logger = logging.getLogger(__name__)

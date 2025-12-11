@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Protocol
 import logging
 
-from app.services.captcha_detection.models import CaptchaResult
+from app.captcha_detection.models import CaptchaResult
 
 
 class WebDriverProtocol(Protocol):

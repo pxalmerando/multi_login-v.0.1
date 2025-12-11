@@ -92,7 +92,6 @@ async def process_urls(
             
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {email}")
-        await redis_storage.close()
         await redis_storage.flush()
     except Exception as e:
         logger.exception(f"Error for {email}: {e}")
@@ -106,6 +105,5 @@ async def process_urls(
     finally:
         
         await redis_storage.flush()
-        await redis_storage.close()
         await multi_login_service.cleanup()
         logger.info(f"Cleanup complete for {email}")

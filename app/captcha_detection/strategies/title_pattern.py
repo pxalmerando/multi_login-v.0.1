@@ -1,6 +1,6 @@
-from app.services.captcha_detection.strategies.base import DetectionStrategy
-from app.services.captcha_detection.models import CaptchaResult
-from app.services.captcha_detection.constants import CaptchaPatterns, ConfidenceLevel
+from app.captcha_detection.strategies.base import DetectionStrategy
+from app.captcha_detection.models import CaptchaResult
+from app.captcha_detection.constants import CaptchaPatterns, ConfidenceLevel
 
 
 class TitlePatternDetectionStrategy(DetectionStrategy):

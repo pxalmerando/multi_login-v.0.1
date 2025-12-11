@@ -2,18 +2,18 @@ import logging
 from typing import List, Optional
 
 
-from app.services.captcha_detection.models import CaptchaResult
-from app.services.captcha_detection.constants import ConfidenceLevel
-from app.services.captcha_detection.strategies.base import DetectionStrategy
-from app.services.captcha_detection.strategies.generic import GenericDetectionStrategy
-from app.services.captcha_detection.strategies.hcaptcha import HCaptchaDetectionStrategy
-from app.services.captcha_detection.strategies.bol_block import BolBlockDetectionStrategy
-from app.services.captcha_detection.strategies.recaptcha import RecaptchaDetectionStrategy
-from app.services.captcha_detection.strategies.cloudflare import CloudflareDetectionStrategy
-from app.services.captcha_detection.strategies.funcaptcha import FunCaptchaDetectionStrategy
-from app.services.captcha_detection.strategies.url_pattern import URLPatternDetectionStrategy
-from app.services.captcha_detection.strategies.text_pattern import TextPatternDetectionStrategy
-from app.services.captcha_detection.strategies.title_pattern import TitlePatternDetectionStrategy
+from app.captcha_detection.models import CaptchaResult
+from app.captcha_detection.constants import ConfidenceLevel
+from app.captcha_detection.strategies.base import DetectionStrategy
+from app.captcha_detection.strategies.generic import GenericDetectionStrategy
+from app.captcha_detection.strategies.hcaptcha import HCaptchaDetectionStrategy
+from app.captcha_detection.strategies.bol_block import BolBlockDetectionStrategy
+from app.captcha_detection.strategies.recaptcha import RecaptchaDetectionStrategy
+from app.captcha_detection.strategies.cloudflare import CloudflareDetectionStrategy
+from app.captcha_detection.strategies.funcaptcha import FunCaptchaDetectionStrategy
+from app.captcha_detection.strategies.url_pattern import URLPatternDetectionStrategy
+from app.captcha_detection.strategies.text_pattern import TextPatternDetectionStrategy
+from app.captcha_detection.strategies.title_pattern import TitlePatternDetectionStrategy
 
 
 class CaptchaDetector:
