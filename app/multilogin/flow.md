@@ -10,58 +10,6 @@ This codebase implements a comprehensive authentication and profile management s
 
 ---
 
-## Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Application Layer                         │
-│                  (Client Code Entry Points)                    │
-└────────────┬──────────────────────────────────────────────────┘
-             │
-             ├──────────────────────────────────────────────────────┐
-             │                                                      │
-     ┌───────▼──────────┐  ┌──────────────┐  ┌──────────────────┐ │
-     │ RedisTokenManager│  │ProfileManager│  │ FolderManager    │ │
-     └────────┬─────────┘  └──────┬───────┘  └────────┬─────────┘ │
-             │                    │                   │            │
-     ┌───────▼──────────────────────┴──────────────────┴─────────┐ │
-     │            BaseManagerApi (HTTP Client Wrapper)          │ │
-     │     Provides authenticated request handling               │ │
-     └───────┬──────────────────────────────────────────────────┘ │
-             │                                                    │
-     ┌───────▼─────────────────────────────────────────────────┐  │
-     │         TokenService (Token Orchestration)              │  │
-     │  ├─ Token Validation (is_valid, is_expired)             │  │
-     │  ├─ Token Serialization (JSON encode/decode)            │  │
-     │  ├─ Token Repository (Redis operations)                 │  │
-     │  └─ User Authentication (login, credentials)            │  │
-     └───────┬──────────────────────────────────────────────────┘  │
-             │                                                    │
-     ┌───────┴────────────────┬──────────────────────────────────┐ │
-     │                        │                                  │ │
-┌────▼─────────┐ ┌────────────▼──────┐ ┌──────────────┐ ┌────────▼───┐│
-│  UserAuth    │ │TokenValidator     │ │TokenSerializer
- │ │TokenRepository││
-│(Credentials) │ │(Expiration Check) │ │(JSON Format)  │ │(Redis I/O) ││
-└──────────────┘ └───────────────────┘ └───────────────┘ └────────────┘│
-             │                                                    │
-    ┌────────▼─────────────────────────────────────────────────┐ │
-    │          Redis Cache (Token Storage)                      │ │
-    │   Key: auth:tokens | Value: Serialized Token Dict        │ │
-    └─────────────────────────────────────────────────────────┘ │
-                                                                │
-└────────────────────────────────────────────────────────────────┘
-              │
-              ▼
-    ┌──────────────────┐
-    │  External APIs   │
-    │  - MultiLogin    │
-    │  - User Service  │
-    │  - Profile Mgmt  │
-    └──────────────────┘
-```
-
----
 
 ## Authentication Flow
 
