@@ -1,4 +1,5 @@
 """WebSocket routes for URL processing with authentication."""
+from json import JSONDecodeError
 import logging
 from typing import Optional
 from fastapi import status
@@ -64,9 +65,14 @@ async def process_urls(
         )
 
         while True:
-            data = await websocket.receive_json()
-            urls = data.get("urls", [])
+            try:
+                data = await websocket.receive_json()
+            except JSONDecodeError:
+                logger.warning(f"Received malformed/empty JSON from {email}")
+                continue
             
+            urls = data.get("urls", [])
+
             if not urls or not isinstance(urls, list):
                 await websocket.send_json({
                     "status": "error",
