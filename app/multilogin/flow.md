@@ -67,7 +67,7 @@
      - Maps JSON response to `MultiLoginProfileSession` object.
   5. **Registration:**
      - Stores session in `ProfileRegistry` (thread-safe).
-  6. **Return:** Returns the Selenium URL (e.g., `http://localhost:XXXX`).
+  6. **Return:** Returns the Selenium URL (e.g., `http://host.docker.internal:XXXX`).
 
 - **Stop Profile**: `ProfileOperationService.stop_profile(profile_id, headers)`
   1. **Locking:** Acquires profile lock.

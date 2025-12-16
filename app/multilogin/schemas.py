@@ -12,4 +12,4 @@ class MultiLoginProfileSession:
 
     @property
     def selenium_url(self) -> str:
-        return f"http://localhost:{self.selenium_port}"
+        return f"http://host.docker.internal:{self.selenium_port}"
