@@ -1,10 +1,10 @@
 from typing import Optional
-from decouple import config
 import redis.asyncio as redis
 from app.multilogin.exceptions import MultiLoginServiceError
 from app.infrastructure.http.http_client import HttpClient
 from app.multilogin.auth.auth_service import UserAuth
 from app.multilogin.auth.redis_token_manager import RedisTokenManager
+from app.core.config import EMAIL, PASSWORD, REDIS_URL
 
 
 class MultiLoginAuthService:
@@ -24,8 +24,8 @@ class MultiLoginAuthService:
 
         self.base_url = base_url
         self.http_client = http_client
-        self.email = str(config("EMAIL"))
-        self.password = str(config("PASSWORD"))
+        self.email = EMAIL
+        self.password = PASSWORD
         if token_manager:
             self.token_manager = token_manager
         else:
@@ -43,7 +43,7 @@ class MultiLoginAuthService:
             http_client=self.http_client
         )
         
-        redis_client = redis.from_url("redis://127.0.0.1:6379", decode_responses=True)
+        redis_client = redis.from_url(REDIS_URL, decode_responses=True)
         return RedisTokenManager(user_auth, redis_client)
     
     async def get_access_token(self) -> str:

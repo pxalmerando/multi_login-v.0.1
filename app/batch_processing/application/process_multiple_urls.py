@@ -34,6 +34,7 @@ async def process_multiple_urls(
     lifecycle_manager = ProfileLifecycleManager(profile_allocator)
 
     url_processing_service = URLProcessingService()
+    
     url_processor = URLProcessor(multi_login_service, url_processing_service)
     progress_notifier = BatchProgressNotifier(notifier)
     result_aggregator = BatchResultAggregator()

@@ -8,6 +8,7 @@ from app.captcha_detection.detector import CaptchaDetector
 from app.infrastructure.selenium.selenium_manager import SeleniumManager
 
 logger = logging.getLogger(__name__)
+
 class URLProcessingService:
 
     async def process_url(

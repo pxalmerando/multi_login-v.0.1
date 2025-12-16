@@ -1,10 +1,17 @@
 """Application configuration and constants."""
 from decouple import config
+from app.core.secret_loader import load_secrets
+
+load_secrets()
+
+EMAIL = str(config("EMAIL", default=""))
+PASSWORD = str(config("PASSWORD", default=""))
+REDIS_URL = str(config("REDISURL", default=config("REDIS_URL", default="")))
 
 # Security Configuration
-SECRET_KEY = config("SECRET_KEY")
-ALGORITHM = config("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = config("ACCESS_TOKEN_EXPIRE_MINUTES", cast=float)
+SECRET_KEY = str(config("SECRET_KEY"))
+ALGORITHM = str(config("ALGORITHM"))
+ACCESS_TOKEN_EXPIRE_MINUTES = float(config("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 # HTTP Status Codes
 STATUS_BAD_REQUEST = 400
@@ -21,4 +28,5 @@ AUTH_HEADER_NAME = {"WWW-Authenticate": "Bearer"}
 
 # URLS:
 BASE_URL = "https://api.multilogin.com"
-LAUNCHER_URL = "https://launcher.mlx.yt:45001"
+LAUNCHER_URL = "http://host.docker.internal:45000"
+# LAUNCHER_URL = "https://launcher.mlx.yt:45001"

@@ -1,0 +1,54 @@
+services:
+  api:
+    build: .                        
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    secrets:
+      - jwt_secretkey
+      - email                       
+      - password                    
+    environment:
+      - SECRET_KEY_FILE=/run/secrets/jwt_secretkey
+      - EMAIL_FILE=/run/secrets/email
+      - PASSWORD_FILE=/run/secrets/password
+      - REDIS_HOST=redis_db
+      - REDIS_PORT=6379
+    depends_on:
+      redis_db:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  redis_db:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+secrets:
+  jwt_secretkey:
+    file: ./secrets/secret_key.txt  
+  email:
+    file: ./secrets/email.txt
+  password:
+    file: ./secrets/password.txt

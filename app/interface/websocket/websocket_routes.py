@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 from fastapi import status
 from jose import jwt, JWTError
-from app.core.config import SECRET_KEY, ALGORITHM
+from app.core.config import REDIS_URL, SECRET_KEY, ALGORITHM
 from app.multilogin.repositories.profile_repository import ProfileRepository
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.multilogin.application.multi_login_service import MultiLoginService
@@ -49,8 +49,9 @@ async def process_urls(
         "message": f"Authenticated as {email}"
     })
     
-    
-    redis_storage = RedisProfileStorage()
+    url = REDIS_URL
+
+    redis_storage = RedisProfileStorage(url=url)
     multi_login_service = MultiLoginService()
     
     try:
