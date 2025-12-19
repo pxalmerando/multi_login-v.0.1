@@ -6,7 +6,7 @@ load_secrets()
 
 EMAIL = str(config("EMAIL", default=""))
 PASSWORD = str(config("PASSWORD", default=""))
-REDIS_URL = str(config("REDISURL", default=config("REDIS_URL", default="")))
+REDIS_URL = str(config("REDIS_URL", default=config("REDIS_URL", default="")))
 
 # Security Configuration
 SECRET_KEY = str(config("SECRET_KEY"))
@@ -28,5 +28,4 @@ AUTH_HEADER_NAME = {"WWW-Authenticate": "Bearer"}
 
 # URLS:
 BASE_URL = "https://api.multilogin.com"
-LAUNCHER_URL = "http://host.docker.internal:45000"
-# LAUNCHER_URL = "https://launcher.mlx.yt:45001"
+LAUNCHER_URL = "https://host.docker.internal:45001"
