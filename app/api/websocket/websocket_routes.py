@@ -6,7 +6,6 @@ from app.core.config import SECRET_KEY, ALGORITHM
 from app.database.profile_repository import ProfileRepository
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.services.multi_login_service import MultiLoginService
-from app.services.profile_storage_protocol import ProfileStorageProtocol
 from app.services.redis_profile_storage import RedisProfileStorage
 from app.api.websocket.websocket_handlers import process_multiple_urls
 from app.services.profile_allocation_service import ProfileAllocationService

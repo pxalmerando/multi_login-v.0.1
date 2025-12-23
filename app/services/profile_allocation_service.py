@@ -4,7 +4,6 @@ import time
 from typing import Optional
 
 from app.database.profile_repository import ProfileRepository
-from app.services.profile_storage_protocol import ProfileStorageProtocol
 from app.services.redis_profile_storage import RedisProfileStorage
 
 logger = logging.getLogger(__name__)
